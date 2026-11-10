@@ -152,3 +152,23 @@ test('missing folder and command are refused before starting', async () => {
   assert.equal((await call(`/api/services/${s.id}/start`, { method: 'POST', body: {} })).data.error, 'no_folder');
   assert.equal((await call(`/api/commands?folder=${encodeURIComponent(ROOT)}`)).data.commands[0], 'npm start');
 });
+
+test('an error page does not stick as the service icon', async () => {
+  let broken = true;
+  const srv = http.createServer((req, res) => {
+    if (broken) { res.writeHead(500); return res.end('{"error":"boom"}'); }
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end('<link rel="icon" href="icon.svg"><title>ok</title>');
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${srv.address().port}`;
+  const s = (await call('/api/services', { method: 'POST', body: { name: 'Err', url } })).data.service;
+  try {
+    await getSvc(s.id);
+    broken = false;
+    assert.equal((await getSvc(s.id)).icon, `${url}/icon.svg`);
+  } finally {
+    await call(`/api/services/${s.id}`, { method: 'DELETE' });
+    srv.close();
+  }
+});

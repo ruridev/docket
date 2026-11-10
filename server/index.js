@@ -27,7 +27,7 @@ async function serviceStatus(s) {
   let page = pageCache.get(s.url);
   if (res.ok && (!page || Date.now() - page.at > PAGE_TTL)) {
     const full = await probe(s.url, { timeout: 2500, wantBody: true });
-    if (full.ok) {
+    if (full.ok && full.status < 400) {
       page = { at: Date.now(), icon: iconOf(full.body, s.url), title: titleOf(full.body), framable: !blocksFraming(full.headers) };
       pageCache.set(s.url, page);
     }
