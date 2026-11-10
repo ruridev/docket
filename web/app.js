@@ -97,6 +97,13 @@ function renderHeader() {
     <button class="count" type="button" data-list="up" aria-label="${esc(tr('up'))} ${up}"><span class="dot up"></span><span class="lbl">${esc(tr('up'))}</span> <strong>${up}</strong></button>
     <button class="count" type="button" data-list="down" aria-label="${esc(tr('down'))} ${down}"><span class="dot"></span><span class="lbl">${esc(tr('down'))}</span> <strong>${down}</strong></button>`;
   const s = svc(view);
+  document.body.classList.toggle('in-view', !!s);
+  if (!s) document.body.classList.remove('hdr-open');
+  $('#fab').hidden = !s;
+  $('#fab').setAttribute('aria-label', 'Docket');
+  $('#fab').setAttribute('aria-expanded', String(document.body.classList.contains('hdr-open')));
+  $('#fab').innerHTML = s ? `${$('#brand .logo').outerHTML}<span class="dot ${statusOf(s).cls}"></span>` : '';
+  placeFab();
   $('#current').innerHTML = s ? `
     <button class="count" type="button" data-list="all" title="${esc(tr('switchTitle'))}">
       <span class="dot ${statusOf(s).cls}"></span>
@@ -113,6 +120,50 @@ function renderHeader() {
     </a>
     <span class="sep"></span>` : '';
 }
+
+// ---------- floating button: drag to move, position kept in this browser ----------
+// Stored as 0..1 of the free space so it stays on screen when the window is resized.
+const FAB_KEY = 'docket-portal-fab';
+let fabPos = (() => { try { return JSON.parse(localStorage.getItem(FAB_KEY)); } catch { return null; } })();
+let fabDrag = null;
+let fabMoved = false;
+
+function placeFab() {
+  const f = $('#fab');
+  if (!fabPos || f.hidden) return;
+  Object.assign(f.style, {
+    left: `${Math.round(fabPos.x * (innerWidth - f.offsetWidth))}px`,
+    top: `${Math.round(fabPos.y * (innerHeight - f.offsetHeight))}px`,
+    bottom: 'auto',
+    transform: 'none',
+  });
+}
+
+$('#fab').addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  const f = e.currentTarget;
+  const r = f.getBoundingClientRect();
+  fabDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY };
+  fabMoved = false;
+  f.setPointerCapture(e.pointerId); // keeps the drag going over the service iframe
+});
+$('#fab').addEventListener('pointermove', (e) => {
+  if (!fabDrag) return;
+  if (!fabMoved && Math.hypot(e.clientX - fabDrag.x0, e.clientY - fabDrag.y0) < 4) return;
+  fabMoved = true;
+  const f = e.currentTarget;
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  fabPos = {
+    x: clamp((e.clientX - fabDrag.dx) / (innerWidth - f.offsetWidth)),
+    y: clamp((e.clientY - fabDrag.dy) / (innerHeight - f.offsetHeight)),
+  };
+  placeFab();
+});
+$('#fab').addEventListener('pointerup', () => {
+  if (fabDrag && fabMoved) try { localStorage.setItem(FAB_KEY, JSON.stringify(fabPos)); } catch { /* ignore */ }
+  fabDrag = null;
+});
+window.addEventListener('resize', placeFab);
 
 // ---------- home ----------
 const editIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
@@ -462,6 +513,7 @@ async function stop(id) {
 
 function openView(id) {
   view = id;
+  document.body.classList.remove('hdr-open');
   closeModal();
   render();
 }
@@ -471,6 +523,11 @@ document.addEventListener('click', async (e) => {
   if (!t) return;
   if (t.matches('[data-overlay]')) { if (e.target === t && modal?.type !== 'edit') closeModal(); return; }
   const d = t.dataset;
+  if (t.id === 'fab') {
+    if (fabMoved) { fabMoved = false; return; } // end of a drag, not a click
+    document.body.classList.toggle('hdr-open');
+    return renderHeader();
+  }
   if (t.id === 'brand') { view = 'home'; return render(); }
   if (t.id === 'addBtn') return openEdit(null);
   if (t.id === 'settingsBtn') return openSettings();
@@ -524,7 +581,11 @@ document.addEventListener('input', (e) => {
   if (n === 'cmd') for (const c of document.querySelectorAll('#cmdChips .chip')) c.classList.toggle('on', c.dataset.cmd === e.target.value.trim());
 });
 document.addEventListener('submit', (e) => { if (e.target.id === 'editForm') saveEdit(e); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal) closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (modal) closeModal();
+  else if (document.body.classList.contains('hdr-open')) { document.body.classList.remove('hdr-open'); renderHeader(); }
+});
 
 // ---------- refresh loop ----------
 function render() {
