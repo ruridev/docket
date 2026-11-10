@@ -282,26 +282,23 @@ function renderList() {
   const f = modal.filter;
   const up = services.filter(isLive).length;
   const listed = services.filter((s) => (f === 'up' ? isLive(s) : f === 'down' ? !isLive(s) : true));
-  // The list re-renders on every poll; carry scroll position and expanded commands across.
+  // The list re-renders on every poll; carry the scroll position across.
   const prev = $('#modal .list-body');
   const scroll = prev ? prev.scrollTop : 0;
-  const opened = new Set([...document.querySelectorAll('#modal details.cmd[open]')].map((d) => d.dataset.id));
   const tab = (key, label, n) => `<button class="ftab${f === key ? ' on' : ''}" type="button" data-filter="${key}">${esc(label)} ${n}</button>`;
   const body = listed.map((s) => {
     const st = statusOf(s);
-    return `<div class="row${view === s.id ? ' cur' : ''}">
-      <div class="row-main">
-        <div class="row-title"><b>${esc(s.name)}</b><span class="pill ${st.cls}">${esc(st.label)}</span><span class="mono small muted">${esc(s.url)}</span></div>
-        <span class="small muted">${esc(s.desc || tr('noDesc'))}</span>
-        ${s.folder ? `<details class="cmd mono small muted" data-id="${s.id}"${opened.has(s.id) ? ' open' : ''}><summary>${esc(s.folder)}</summary><pre>${esc(s.cmd)}</pre></details>` : `<span class="small muted">${esc(tr('noFolder'))}</span>`}
-      </div>
+    return `<article class="card${view === s.id ? ' cur' : ''}">
+      <div class="card-head">${iconHtml(s)}
+        <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3></div>
+        <span class="pill ${st.cls}">${esc(st.label)}</span></div>
+      <p>${esc(s.desc || tr('noDesc'))}</p>
       <div class="actions">
-        ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
-        ${canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
         <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
+        ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
         <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
-        <button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}">${editIcon}</button>
-      </div></div>`;
+        ${canStop(s) ? `<span class="grow"></span><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
+      </div></article>`;
   }).join('');
   $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg list-dlg" role="dialog" aria-modal="true" aria-label="${esc(tr('listTitle'))}">
     <div class="dlg-head"><h2>${esc(tr('listTitle'))}</h2>
@@ -309,7 +306,7 @@ function renderList() {
       <span class="grow"></span>
       <button class="btn btn-primary" type="button" data-act="add">+ ${esc(tr('register'))}</button>
       <button class="icon-btn" type="button" data-act="close" aria-label="${esc(tr('close'))}">${closeIcon}</button></div>
-    <div class="list-body">${body || `<p class="muted" style="text-align:center;margin:24px 0">${esc(tr('noMatch'))}</p>`}</div>
+    <div class="list-body">${body ? `<div class="grid">${body}</div>` :`<p class="muted" style="text-align:center;margin:24px 0">${esc(tr('noMatch'))}</p>`}</div>
   </section></div>`;
   $('#modal .list-body').scrollTop = scroll;
 }

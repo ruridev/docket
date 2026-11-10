@@ -98,18 +98,12 @@ a.icon-btn { color: var(--muted); }
 .dlg-head h2 { margin: 0 8px 0 0; font-size: 17px; }
 .dlg-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
 .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
-.list-dlg { max-width: 960px; max-height: calc(100vh - 88px); }
-.list-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.list-dlg { max-width: 960px; max-height: calc(100vh - 88px); overflow: hidden; }
+.list-body { padding: 16px; overflow-y: auto; background: var(--bg); }
+.card.cur { border-color: var(--accent); }
 .ftab { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 13px; }
 .ftab.on { background: var(--chip); border-color: var(--border); color: var(--text); }
-.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
-.row.cur { border-color: var(--accent); }
-.row-main { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; }
-.row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.row-title b { font-weight: 600; font-size: 15px; }
 .small { font-size: 12px; }
-.cmd summary { cursor: pointer; overflow-wrap: anywhere; }
-.cmd pre { margin: 4px 0 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .chip { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12px; }
 .chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -169,7 +163,7 @@ a.icon-btn { color: var(--muted); }
 :root[data-theme="green"] .btn { text-transform: uppercase; letter-spacing: .06em; border-radius: 3px; background: rgba(43, 255, 136, .05); }
 :root[data-theme="green"] .btn:hover:not(:disabled) { background: rgba(43, 255, 136, .14); }
 :root[data-theme="green"] .btn-primary { background: var(--accent); color: var(--accent-text); }
-:root[data-theme="green"] :is(.card, .row, .theme-card, .radio, .field input, .field textarea, .pick) { border-radius: 3px; }
+:root[data-theme="green"] :is(.card, .theme-card, .radio, .field input, .field textarea, .pick) { border-radius: 3px; }
 :root[data-theme="green"] .dlg { border: 1px solid var(--accent); border-radius: 4px; }
 :root[data-theme="green"] .snav button.on { background: rgba(43, 255, 136, .12); color: var(--accent); }
 /* pixel (g6) */
