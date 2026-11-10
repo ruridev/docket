@@ -7,7 +7,8 @@ import http from 'node:http';
 import { parseNetstat, parseLsof, parseTasklist, titleOf, iconOf, blocksFraming, probe } from '../server/ports.js';
 import { validateService, portOf } from '../server/store.js';
 import { simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
-import { serviceEnv, Runner } from '../server/runner.js';
+import { serviceEnv, Runner, stoppable, isCompose } from '../server/runner.js';
+import { spawn } from 'node:child_process';
 
 test('services do not inherit the portal port', () => {
   const env = serviceEnv({ PORT: '4600', Port: '1', DOCKET_PORTAL_DATA: 'x', PATH: 'p', DOCKET_DATA: 'keep' });
@@ -158,5 +159,33 @@ test('probe gives up on a server that drips bytes', async () => {
   } finally {
     srv.closeAllConnections();
     srv.close();
+  }
+});
+
+test('only plain servers are stopped by port, never forwarders', () => {
+  for (const name of ['node', 'python3', 'memos', 'ruby']) assert.equal(stoppable(name), true, name);
+  for (const name of ['ssh', 'com.docker.backend', 'docker-proxy', 'vpnkit', 'limactl', 'OrbStack Helper', 'kubectl', '']) assert.equal(stoppable(name), false, name);
+});
+
+test('isCompose spots docker compose up commands', () => {
+  assert.equal(isCompose('docker compose up'), true);
+  assert.equal(isCompose('docker compose up -d'), true);
+  assert.equal(isCompose('docker-compose up'), true);
+  assert.equal(isCompose('npm run dev'), false);
+  assert.equal(isCompose('docker run -p 80:80 nginx'), false);
+});
+
+test('stop ends a server the portal did not start, found by its port', async () => {
+  const child = spawn(process.execPath, ['-e', "require('http').createServer((q, s) => s.end('ok')).listen(0, '127.0.0.1', function () { console.log(this.address().port); })"], { stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    const port = await new Promise((r) => child.stdout.once('data', (d) => r(Number(String(d).trim()))));
+    const svcs = { a: { id: 'a', url: `http://127.0.0.1:${port}`, folder: '', cmd: '' } };
+    const store = { runs: {}, get: (id) => svcs[id], getRun: () => null, setRun() {} };
+    const r = await new Runner(store, os.tmpdir()).stop('a');
+    assert.deepEqual(r, { ok: true });
+    await new Promise((res) => (child.exitCode !== null || child.signalCode ? res() : child.once('exit', res)));
+    assert.equal(child.signalCode, 'SIGTERM');
+  } finally {
+    child.kill();
   }
 });

@@ -180,7 +180,7 @@ export class Runner {
   /** Stops the process tree the portal started for this service. */
   async stop(id) {
     const r = this.store.getRun(id);
-    if (!r) return { ok: true };
+    if (!r) return this.stopOutside(id);
     this.unwatch(id);
     this.store.setRun(id, { ...r, phase: 'stopping' });
     // Never kill a pid that now belongs to another process: just forget the run.
@@ -195,7 +195,41 @@ export class Runner {
     this.store.setRun(id, null);
     return { ok: true };
   }
+
+  /**
+   * Stops a service started outside the portal: a compose project with `docker compose stop` in its
+   * folder, anything else by the local process listening on its port. Forwarders (ssh, Docker) and the
+   * portal itself are left alone: stopping them would not stop the service, or would stop too much.
+   */
+  async stopOutside(id) {
+    const s = this.store.get(id);
+    if (!s) return { error: 'not_found' };
+    if (s.folder && isCompose(s.cmd)) {
+      if (!fs.existsSync(s.folder)) return { error: 'no_folder' };
+      const ok = await new Promise((res) => execFile('docker', ['compose', 'stop'], { cwd: s.folder, windowsHide: true, timeout: 60_000 }, (err) => res(!err)));
+      return ok ? { ok: true } : { error: 'stop_failed' };
+    }
+    const port = portOf(s.url);
+    const [rows, names] = await Promise.all([listListening(), processNames()]);
+    const pids = [...new Set(rows.filter((x) => x.port === port && LOCAL_HOST.test(x.host)).map((x) => x.pid))];
+    if (!pids.length) return { ok: true };
+    if (pids.some((p) => p === process.pid || !stoppable(names.get(p)))) return { error: 'not_stoppable' };
+    for (const p of pids) {
+      try { process.kill(p, 'SIGTERM'); } catch (e) { if (e.code === 'EPERM') return { error: 'not_stoppable' }; }
+    }
+    for (let i = 0; i < 20 && pids.some(isAlive); i++) await sleep(150);
+    return { ok: true };
+  }
 }
+
+const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
+const FORWARDERS = /^(ssh|sshd|.*docker.*|vpnkit.*|.*lima.*|.*orbstack.*|colima|kubectl|qemu.*|podman.*|wslrelay)$/i;
+
+/** True for a process that serves the port itself, so stopping it stops the service. */
+export const stoppable = (name) => !!name && !FORWARDERS.test(String(name).replace(/\.exe$/i, ''));
+
+/** True for a `docker compose up` / `docker-compose up` command. */
+export const isCompose = (cmd) => /^docker(?: |-)compose\b.*\bup\b/.test(String(cmd || '').trim());
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

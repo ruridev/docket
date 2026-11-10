@@ -58,7 +58,7 @@ function movedUrl(s) {
 const isLive = (s) => s.up || (!!run(s)?.movedTo && run(s).alive);
 const effectiveUrl = (s) => (!s.up && run(s)?.movedTo ? movedUrl(s) : s.url);
 const canStart = (s) => !!s.cmd && !isLive(s) && !(run(s)?.alive);
-const canStop = (s) => !!run(s)?.alive && run(s).phase !== 'stopping';
+const canStop = (s) => (run(s) ? run(s).alive && run(s).phase !== 'stopping' : isLive(s));
 const portOf = (url) => { try { const u = new URL(url); return Number(u.port || (u.protocol === 'https:' ? 443 : 80)); } catch { return null; } };
 
 const TINTS = ['#0969da', '#1a7f37', '#8250df', '#bc4c00', '#bf3989', '#0a7b83', '#6e7781', '#9a6700'];
@@ -520,7 +520,8 @@ async function start(id, opts = {}) {
 }
 
 async function stop(id) {
-  await api(`/api/services/${id}/stop`, { method: 'POST' });
+  const res = await api(`/api/services/${id}/stop`, { method: 'POST' });
+  if (!res.ok) toast(res.data.error === 'not_stoppable' ? tr('errNotStoppable') : tr('errGeneric', { message: res.data.error || res.status }));
   await refresh();
 }
 

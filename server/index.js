@@ -131,7 +131,10 @@ async function api(req, res, url) {
       if (r.error) return send(res, 400, r);
       return send(res, 200, r);
     }
-    if (action === 'stop' && m === 'POST') return send(res, 200, await runner.stop(id));
+    if (action === 'stop' && m === 'POST') {
+      const r = await runner.stop(id);
+      return send(res, r.error ? 400 : 200, r);
+    }
     if (action === 'dismiss' && m === 'POST') {
       runner.clearMoved(id);
       runner.clearFailed(id);
