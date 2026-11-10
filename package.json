@@ -1,0 +1,14 @@
+{
+  "name": "docket",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One page for the web tools running on this PC: register them, open them, start and stop them.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test \"test/*.test.js\""
+  }
+}
