@@ -100,7 +100,7 @@ function renderHeader() {
   document.body.classList.toggle('in-view', !!s);
   if (!s) document.body.classList.remove('hdr-open');
   $('#fab').hidden = !s;
-  $('#fab').setAttribute('aria-label', 'Docket');
+  $('#fab').setAttribute('aria-label', 'docket');
   $('#fab').setAttribute('aria-expanded', String(document.body.classList.contains('hdr-open')));
   $('#fab').innerHTML = s ? `${$('#brand .logo').outerHTML}<span class="dot ${statusOf(s).cls}"></span>` : '';
   placeFab();
@@ -438,10 +438,10 @@ async function deleteService() {
 
 // --- settings ---
 const PREVIEW = {
-  light: { bg: '#f6f8fa', panel: '#ffffff', border: '#d0d7de', text: '#1f2328', muted: '#656d76', accent: '#0969da', bar: '#ffffff', barText: '#1f2328', font: 'inherit', sample: 'Docket' },
-  dark: { bg: '#0d1117', panel: '#161b22', border: '#30363d', text: '#e6edf3', muted: '#8d96a0', accent: '#2f81f7', bar: '#161b22', barText: '#e6edf3', font: 'inherit', sample: 'Docket' },
+  light: { bg: '#f6f8fa', panel: '#ffffff', border: '#d0d7de', text: '#1f2328', muted: '#656d76', accent: '#0969da', bar: '#ffffff', barText: '#1f2328', font: 'inherit', sample: 'docket' },
+  dark: { bg: '#0d1117', panel: '#161b22', border: '#30363d', text: '#e6edf3', muted: '#8d96a0', accent: '#2f81f7', bar: '#161b22', barText: '#e6edf3', font: 'inherit', sample: 'docket' },
   green: { bg: '#0b1410', panel: '#111d17', border: '#24412f', text: '#d6f2e0', muted: '#8fb39d', accent: '#2bff88', bar: '#0b1410', barText: '#2bff88', font: "'Barlow Condensed', sans-serif", sample: 'DOCKET' },
-  g6: { bg: '#e2e2e0', panel: '#f1f1ef', border: '#8a8a88', text: '#1b1b1b', muted: '#4f4f4f', accent: '#1b1b1b', bar: '#1b1b1b', barText: '#f1f1ef', font: "'Fusion Pixel KO', monospace", sample: '[Docket]' },
+  g6: { bg: '#e2e2e0', panel: '#f1f1ef', border: '#8a8a88', text: '#1b1b1b', muted: '#4f4f4f', accent: '#1b1b1b', bar: '#1b1b1b', barText: '#f1f1ef', font: "'Fusion Pixel KO', monospace", sample: '[docket]' },
 };
 
 function renderSettings() {
@@ -589,7 +589,7 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- refresh loop ----------
 function render() {
-  document.title = svc(view) ? `${svc(view).name} · Docket` : 'Docket';
+  document.title = svc(view) ? `${svc(view).name} · docket` : 'docket';
   renderHeader();
   renderHome();
   renderView();
