@@ -280,6 +280,10 @@ function renderList() {
   const f = modal.filter;
   const up = services.filter(isLive).length;
   const listed = services.filter((s) => (f === 'up' ? isLive(s) : f === 'down' ? !isLive(s) : true));
+  // The list re-renders on every poll; carry scroll position and expanded commands across.
+  const prev = $('#modal .list-body');
+  const scroll = prev ? prev.scrollTop : 0;
+  const opened = new Set([...document.querySelectorAll('#modal details.cmd[open]')].map((d) => d.dataset.id));
   const tab = (key, label, n) => `<button class="ftab${f === key ? ' on' : ''}" type="button" data-filter="${key}">${esc(label)} ${n}</button>`;
   const body = listed.map((s) => {
     const st = statusOf(s);
@@ -287,7 +291,7 @@ function renderList() {
       <div class="row-main">
         <div class="row-title"><b>${esc(s.name)}</b><span class="pill ${st.cls}">${esc(st.label)}</span><span class="mono small muted">${esc(s.url)}</span></div>
         <span class="small muted">${esc(s.desc || tr('noDesc'))}</span>
-        <span class="mono small muted">${esc(s.folder ? `${s.folder}  ›  ${s.cmd}` : tr('noFolder'))}</span>
+        ${s.folder ? `<details class="cmd mono small muted" data-id="${s.id}"${opened.has(s.id) ? ' open' : ''}><summary>${esc(s.folder)}</summary><pre>${esc(s.cmd)}</pre></details>` : `<span class="small muted">${esc(tr('noFolder'))}</span>`}
       </div>
       <div class="actions">
         ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
@@ -305,6 +309,7 @@ function renderList() {
       <button class="icon-btn" type="button" data-act="close" aria-label="${esc(tr('close'))}">${closeIcon}</button></div>
     <div class="list-body">${body || `<p class="muted" style="text-align:center;margin:24px 0">${esc(tr('noMatch'))}</p>`}</div>
   </section></div>`;
+  $('#modal .list-body').scrollTop = scroll;
 }
 
 function openList(filter) {

@@ -108,6 +108,8 @@ a.icon-btn { color: var(--muted); }
 .row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row-title b { font-weight: 600; font-size: 15px; }
 .small { font-size: 12px; }
+.cmd summary { cursor: pointer; overflow-wrap: anywhere; }
+.cmd pre { margin: 4px 0 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .chip { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12px; }
 .chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
