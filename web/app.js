@@ -193,6 +193,7 @@ function renderHome() {
           ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
           <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
           <span class="grow"></span>
+          ${canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
           <button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}" title="${esc(tr('edit'))}">${editIcon}</button>
         </div></article>`;
     }).join('')}</div></div>`;
