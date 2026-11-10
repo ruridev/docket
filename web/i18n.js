@@ -31,6 +31,8 @@ window.I18N = {
     themeHelp: '화면의 색과 모양을 견본에서 고릅니다. 고르면 바로 바뀌고 이 브라우저에만 저장됩니다. 좌우로 나뉜 견본은 OS의 라이트 / 다크 설정에 맞춥니다. 그린을 고르면 Google Fonts에서 글꼴을 불러옵니다.',
     langHelp: '화면에 쓰는 언어입니다. 이 브라우저에만 저장됩니다.',
     tSystem: '시스템 설정', tLight: '라이트', tDark: '다크', tGreen: '그린', tPixel: '픽셀',
+    account: '계정', signedInAs: '{name}(으)로 로그인했습니다. 이 PC에만 저장된 계정입니다.', signOut: '로그아웃',
+    resetHelp: '비밀번호를 잊었다면 이 PC에서 아래 명령을 실행하세요. 계정만 지워지고 데이터는 그대로이며, 다시 열면 계정을 새로 만들 수 있습니다.',
   },
   ja: {
     home: 'ポータルのホーム', up: '起動中', down: '応答なし', starting: '起動処理中', switchTitle: 'ほかのサービスに切り替える', register: 'サービスを登録', settings: '設定',
@@ -63,6 +65,8 @@ window.I18N = {
     themeHelp: '画面の色と形を見本から選びます。選ぶとすぐに変わり、このブラウザにだけ保存されます。左右に分かれた見本は OS のライト / ダークに従います。グリーンを選ぶと Google Fonts からフォントを読み込みます。',
     langHelp: '画面の言語です。このブラウザにだけ保存されます。',
     tSystem: 'システム設定', tLight: 'ライト', tDark: 'ダーク', tGreen: 'グリーン', tPixel: 'ピクセル',
+    account: 'アカウント', signedInAs: '{name} でサインインしています。この PC にだけ保存されたアカウントです。', signOut: 'サインアウト',
+    resetHelp: 'パスワードを忘れたときは、この PC で次のコマンドを実行してください。アカウントだけが消え、データはそのままです。開き直すとアカウントを作り直せます。',
   },
   en: {
     home: 'Portal home', up: 'Running', down: 'Not responding', starting: 'Starting', switchTitle: 'Switch to another service', register: 'Add service', settings: 'Settings',
@@ -95,5 +99,7 @@ window.I18N = {
     themeHelp: 'Pick the colors and shapes from the samples. It changes right away and is saved in this browser only. The split sample follows the OS light / dark setting. Green loads its fonts from Google Fonts.',
     langHelp: 'The language of the screen. Saved in this browser only.',
     tSystem: 'System', tLight: 'Light', tDark: 'Dark', tGreen: 'Green', tPixel: 'Pixel',
+    account: 'Account', signedInAs: 'Signed in as {name}. The account is kept on this PC only.', signOut: 'Sign out',
+    resetHelp: 'Forgot the password? Run this command on this PC. Only the account is removed, your data stays, and you can create the account again.',
   }
 };

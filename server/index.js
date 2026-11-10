@@ -7,8 +7,15 @@ import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
 import { probe, titleOf, iconOf, blocksFraming, scanHttp, listListening } from './ports.js';
 import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js';
+import { createAuth } from './auth.js';
 
 const PORT = portFromArgs();
+const auth = createAuth({ file: path.join(DATA_DIR, 'auth.json'), cookie: 'docket_portal_session' });
+
+if (process.argv.includes('--reset-password')) {
+  console.log(auth.reset() ? 'Removed the account. Open docket to create it again.' : 'There is no account.');
+  process.exit(0);
+}
 
 // data/ holds the service commands: only this user may read it.
 fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
@@ -60,7 +67,9 @@ function readBody(req) {
 }
 
 function serveStatic(req, res, pathname) {
-  const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1));
+  let rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1));
+  // Signed out, the app page is the sign-in page (its files are public; the API is not).
+  if (rel === 'index.html' && !auth.user(req)) rel = 'login.html';
   const file = path.resolve(WEB_DIR, rel);
   if (!file.startsWith(WEB_DIR + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404, BASE_HEADERS);
@@ -79,6 +88,9 @@ async function api(req, res, url) {
   // CORS preflight that this server never approves, and a sent Origin must be ours.
   const origin = req.headers.origin;
   if (req.headers['x-docket-portal'] !== '1' || (origin && !allowedOrigins.has(origin))) return send(res, 403, { error: 'forbidden' });
+  const signIn = await auth.route(req, res, url.pathname, () => readBody(req));
+  if (signIn) return send(res, signIn.status, signIn.body);
+  if (!auth.user(req)) return send(res, 401, { error: 'signin' });
 
   const parts = url.pathname.split('/').filter(Boolean).slice(1); // after "api"
   const m = req.method;

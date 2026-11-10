@@ -27,6 +27,8 @@ async function api(path, opts = {}) {
     headers: { 'X-Docket-Portal': '1', ...(opts.body ? { 'Content-Type': 'application/json' } : {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
+  // Signed out (or the session ran out): reloading shows the sign-in page.
+  if (res.status === 401) { location.reload(); return new Promise(() => {}); }
   let data = {};
   try { data = await res.json(); } catch { /* empty */ }
   return { status: res.status, ok: res.ok, data };
@@ -469,17 +471,23 @@ function renderSettings() {
       <nav class="snav" aria-label="${esc(tr('settings'))}">
         <button type="button" class="${pane === 'theme' ? 'on' : ''}" data-pane="theme">${esc(tr('theme'))}</button>
         <button type="button" class="${pane === 'lang' ? 'on' : ''}" data-pane="lang">${esc(tr('language'))}</button>
+        <button type="button" class="${pane === 'account' ? 'on' : ''}" data-pane="account">${esc(tr('account'))}</button>
       </nav>
       <div class="spane">${pane === 'theme'
         ? `<h3>${esc(tr('theme'))}</h3><p>${esc(tr('themeHelp'))}</p><div class="theme-grid" role="radiogroup" aria-label="${esc(tr('theme'))}">${cards}</div>`
-        : `<h3>${esc(tr('language'))}</h3><p>${esc(tr('langHelp'))}</p><div class="radios" role="radiogroup" aria-label="${esc(tr('language'))}">${langs}</div>`}
+        : pane === 'lang'
+        ? `<h3>${esc(tr('language'))}</h3><p>${esc(tr('langHelp'))}</p><div class="radios" role="radiogroup" aria-label="${esc(tr('language'))}">${langs}</div>`
+        : `<h3>${esc(tr('account'))}</h3><p>${esc(tr('signedInAs', { name: modal.user || '' }))}</p>
+          <div><button class="btn" type="button" data-act="signOut">${esc(tr('signOut'))}</button></div>
+          <p>${esc(tr('resetHelp'))}</p><p><code class="mono">node server/index.js --reset-password</code></p>`}
       </div>
     </div></section></div>`;
 }
 
 function openSettings() {
-  modal = { type: 'settings', pane: 'theme' };
+  modal = { type: 'settings', pane: 'theme', user: '' };
   renderSettings();
+  api('/api/auth').then((r) => { if (modal?.type === 'settings') { modal.user = r.data.user || ''; renderSettings(); } });
 }
 
 // --- port conflict ---
@@ -563,6 +571,7 @@ document.addEventListener('click', async (e) => {
   }
   switch (d.act) {
     case 'close': return closeModal();
+    case 'signOut': await api('/api/auth/logout', { method: 'POST' }); return location.reload();
     case 'add': return openEdit(null);
     case 'delete': return deleteService();
     case 'reload': { const f = frames.get(view); if (f) f.el.src = f.src; return refresh(); }

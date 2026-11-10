@@ -26,7 +26,7 @@ It works with any local web app, such as [docket-gits](https://github.com/ruride
 
    There are no dependencies, so there is no `npm install`.
 
-2. Open http://localhost:4600.
+2. Open http://localhost:4600 and create your account (see [Signing in](#signing-in)).
 3. Press **Add service**. docket lists the web servers it finds on your PC; pick one, or enter a name and an address.
 4. To start and stop the tool from docket, also give it a folder and a start command. docket suggests commands from `package.json` scripts or a Python entry file.
 
@@ -36,6 +36,15 @@ It works with any local web app, such as [docket-gits](https://github.com/ruride
 | `DOCKET_PORTAL_DATA` | `./data` | Where services, state and logs are stored |
 
 To update, stop docket, run `git pull` and start it again. Your services are in `data/`, which git does not track.
+
+## Signing in
+
+The first time you open docket, it asks you to create an account: a name and a password of 8 characters or more. There is one account and no email, because nothing is ever sent out and the account only guards this app on this PC. From then on every API call needs the signed-in session.
+
+- The account is kept in `data/auth.json` (0600): a scrypt hash of the password and the secret that signs the session cookie. A session lasts 30 days and survives restarts.
+- Forgot the password? Run `node server/index.js --reset-password` in this folder. It removes only the account; your data stays, and the next visit asks you to create the account again.
+- Create the account right after the first start: until then, any program on this PC that can reach the port could create it first.
+- docket, docket-gits and docket-jobs each have their own account. Inside the docket portal, each tool shows its own sign-in page the first time.
 
 ## How it works
 
@@ -62,6 +71,7 @@ A tool opens in a sandboxed iframe below the header (it cannot navigate the dock
 
 | Path | Contents |
 | --- | --- |
+| `data/auth.json` | The sign-in account (password hash and session secret) |
 | `data/services.json` | Registered services |
 | `data/state.json` | PID and state of each server docket started |
 | `data/logs/<id>.log` | Output of a server docket started, rewritten on each start |
@@ -73,7 +83,7 @@ Theme and language are saved in the browser only.
 - **docket runs registered commands with your user's permissions.** Do not register a command you do not trust.
 - The page and the API listen on `127.0.0.1` only, so they cannot be reached from another device.
 - Because the API can run commands, it checks the `Host` header, the `Origin` header and a custom `X-Docket-Portal` header to reject requests from other web pages. docket itself cannot be embedded in another page.
-- The API has no password or token: any program on this PC that can reach `127.0.0.1` (a container, for example) can use it. Don't run docket on a PC you share with other people. `data/` is created with mode 0700 and its files with 0600 (owner only).
+- The API needs the signed-in session (see [Signing in](#signing-in)). A program running as your user can still read `data/`, so this is no defense against malware on your account. Don't run docket on a PC you share with other people. `data/` is created with mode 0700 and its files with 0600 (owner only).
 - Start commands that docket suggests (from a running process or `package.json`) are offered only in plain forms such as `npm run dev` or `node server.js`; anything else is left for you to type.
 
 ## Troubleshooting
