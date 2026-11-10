@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { listListening, processNames } from './ports.js';
-import { processTable, descendants, isAlive } from './procs.js';
+import { processTable, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
 import { portOf } from './store.js';
 import { ROOT } from './paths.js';
 
@@ -14,6 +14,7 @@ const LAUNCH = path.join(ROOT, 'server', 'launch.js');
 const IS_WIN = process.platform === 'win32';
 const WATCH_MS = 90_000; // how long to wait for the port after starting
 const MOVED_GRACE_MS = 4_000; // a different port counts as "moved" after this long without the expected one
+const TAIL_BYTES = 64 * 1024; // how much of the end of a log the UI reads
 
 export class Runner {
   constructor(store, logDir) {
@@ -38,10 +39,16 @@ export class Runner {
   logFile(id) { return path.join(this.logDir, `${id}.log`); }
 
   tail(id, lines = 40) {
+    let fd;
     try {
-      const text = fs.readFileSync(this.logFile(id), 'utf8');
+      fd = fs.openSync(this.logFile(id), 'r');
+      const size = fs.fstatSync(fd).size;
+      const buf = Buffer.alloc(Math.min(size, TAIL_BYTES));
+      fs.readSync(fd, buf, 0, buf.length, size - buf.length);
+      let text = buf.toString('utf8');
+      if (buf.length < size) text = text.slice(text.indexOf('\n') + 1); // drop the cut first line
       return text.split(/\r?\n/).filter((l) => l.trim()).slice(-lines).join('\n');
-    } catch { return ''; }
+    } catch { return ''; } finally { if (fd !== undefined) fs.closeSync(fd); }
   }
 
   /** Who holds the port: a service the portal started, or another program. Null when free. */
@@ -49,7 +56,8 @@ export class Runner {
     const rows = (await listListening()).filter((r) => r.port === port);
     if (!rows.length) return null;
     const pids = new Set(rows.map((r) => r.pid));
-    const runs = Object.entries(this.store.runs).filter(([id, r]) => id !== exceptId && isAlive(r.pid));
+    const runs = [];
+    for (const [id, r] of Object.entries(this.store.runs)) if (id !== exceptId && await stillOurs(r)) runs.push([id, r]);
     if (runs.length) {
       const table = await processTable();
       for (const [id, r] of runs) {
@@ -88,9 +96,10 @@ export class Runner {
     }
     if (owner) return { conflict: { port, ...owner } };
 
-    fs.mkdirSync(this.logDir, { recursive: true });
+    fs.mkdirSync(this.logDir, { recursive: true, mode: 0o700 });
     const file = this.logFile(id);
-    fs.writeFileSync(file, `--- ${new Date().toISOString()}  ${s.folder}\n> ${s.cmd}\n`);
+    fs.writeFileSync(file, `--- ${new Date().toISOString()}  ${s.folder}\n> ${s.cmd}\n`, { mode: 0o600 });
+    fs.chmodSync(file, 0o600); // a log from before keeps its old mode otherwise
     let child;
     try {
       // launch.js runs the command (through the shell) and writes its output to the log.
@@ -110,6 +119,10 @@ export class Runner {
       if (r.phase === 'starting') this.store.setRun(id, { ...r, phase: 'failed', exitCode: code });
       else this.store.setRun(id, null);
     });
+    // Remember when it started, so a later reused pid is not taken for it (see stillOurs).
+    const procStart = await startTimeOf(child.pid);
+    const cur = this.store.getRun(id);
+    if (procStart && cur && cur.pid === child.pid) this.store.setRun(id, { ...cur, procStart });
     this.watch(id);
     return { ok: true, pid: child.pid };
   }
@@ -170,14 +183,15 @@ export class Runner {
     if (!r) return { ok: true };
     this.unwatch(id);
     this.store.setRun(id, { ...r, phase: 'stopping' });
-    if (isAlive(r.pid)) {
+    // Never kill a pid that now belongs to another process: just forget the run.
+    if (await stillOurs(r)) {
       if (IS_WIN) {
         await new Promise((res) => execFile('taskkill', ['/PID', String(r.pid), '/T', '/F'], { windowsHide: true }, () => res()));
       } else {
         try { process.kill(-r.pid, 'SIGTERM'); } catch { try { process.kill(r.pid, 'SIGTERM'); } catch { /* gone */ } }
       }
+      for (let i = 0; i < 20 && isAlive(r.pid); i++) await sleep(150);
     }
-    for (let i = 0; i < 20 && isAlive(r.pid); i++) await sleep(150);
     this.store.setRun(id, null);
     return { ok: true };
   }

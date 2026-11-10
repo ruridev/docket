@@ -1,5 +1,6 @@
 // Facts about running processes: parent/child tree, command line, working folder.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { run } from './ports.js';
 import { ROOT } from './paths.js';
@@ -49,6 +50,23 @@ export function isAlive(pid) {
   try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
+/** When the process started, as the OS reports it; '' when it can't be read. Tells a reused pid apart. */
+export async function startTimeOf(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return '';
+  if (IS_WIN) return (await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-Process -Id ${pid}).StartTime.ToString('o')`])).trim();
+  return (await run('ps', ['-o', 'lstart=', '-p', String(pid)])).trim();
+}
+
+/**
+ * True when the run's pid is still the process the portal started. A different start time means
+ * the pid was reused; a run without one is trusted only if it started after the last boot.
+ */
+export async function stillOurs(r) {
+  if (!r || !isAlive(r.pid)) return false;
+  if (r.procStart) return (await startTimeOf(r.pid)) === r.procStart;
+  return Date.parse(r.startedAt) > Date.now() - os.uptime() * 1000;
+}
+
 /** The nearest folder at or above dir that looks like a project root. */
 export function projectRoot(dir) {
   if (!dir) return '';
@@ -71,6 +89,11 @@ const RUNNERS = [
   [/pnpm(?:\.cjs|\.js)?"?\s+(.+)$/i, 'pnpm'],
   [/(?:^|[\\/"])bun(?:\.exe)?"?\s+(.+)$/i, 'bun'],
 ];
+
+// Suggested commands run through the shell, but come from other programs' command lines and from
+// package.json files. Only these plain forms are suggested: no shell syntax can get through.
+const SAFE_CMD = /^(?:(?:npm|yarn|pnpm|bun)(?: run)? [\w:.-]+|(?:node|python3?) [\w./@-]+)(?: [\w./@:=-]+)*$/;
+export const safeCommand = (cmd) => (SAFE_CMD.test(cmd) ? cmd : '');
 
 /** Turns a raw command line into something to type: `"C:\...\node.exe" a.js` -> `node a.js`. */
 export function simplifyCommand(cmd) {
@@ -100,7 +123,7 @@ export function guessLaunch(table, pid) {
     p = byPid.get(p.ppid);
   }
   if (!cmd) cmd = simplifyCommand(self.cmd);
-  return { pid, proc: self.name, cwd: self.cwd || '', folder: projectRoot(self.cwd), cmd };
+  return { pid, proc: self.name, cwd: self.cwd || '', folder: projectRoot(self.cwd), cmd: safeCommand(cmd) };
 }
 
 /** Start commands to offer for a folder: package.json scripts (with its package manager) or Python entry files. */
@@ -123,5 +146,5 @@ export function folderCommands(folder) {
   for (const f of ['server.js', 'index.js', 'app.js']) if (!out.length && has(f)) out.push(`node ${f}`);
   for (const f of ['main.py', 'app.py', 'server.py']) if (has(f)) out.push(`python ${f}`);
   if (has('manage.py')) out.push('python manage.py runserver');
-  return { exists: true, commands: [...new Set(out)].slice(0, 6) };
+  return { exists: true, commands: [...new Set(out.filter(safeCommand))].slice(0, 6) };
 }

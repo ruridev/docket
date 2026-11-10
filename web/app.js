@@ -202,6 +202,8 @@ function ensureFrame(s) {
   let f = frames.get(s.id);
   if (!f) {
     const el = document.createElement('iframe');
+    // No top-navigation: a framed service can't move the portal page away.
+    el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals');
     el.title = s.name;
     el.src = src;
     $('#frames').appendChild(el);

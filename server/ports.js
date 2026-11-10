@@ -81,13 +81,15 @@ export async function processNames() {
 
 /** Answers whether an HTTP server answers at url. Any response (even 404) counts. */
 export function probe(url, { timeout = 1500, wantBody = false } = {}) {
-  return new Promise((resolve) => {
+  return new Promise((done) => {
     let u;
-    try { u = new URL(url); } catch { return resolve({ ok: false }); }
+    try { u = new URL(url); } catch { return done({ ok: false }); }
+    let deadline;
+    const resolve = (v) => { clearTimeout(deadline); done(v); };
     const lib = u.protocol === 'https:' ? https : http;
     const req = lib.get(u, { timeout, rejectUnauthorized: false, headers: { accept: 'text/html,*/*' } }, (res) => {
       const headers = res.headers;
-      if (!wantBody) { res.resume(); return resolve({ ok: true, status: res.statusCode, headers }); }
+      if (!wantBody) { res.destroy(); return resolve({ ok: true, status: res.statusCode, headers }); }
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (c) => { body += c; if (body.length > 65536) res.destroy(); });
@@ -95,6 +97,8 @@ export function probe(url, { timeout = 1500, wantBody = false } = {}) {
       res.on('end', done);
       res.on('close', done);
     });
+    // The socket timeout only catches silence; a server that sends a byte now and then needs a deadline.
+    deadline = setTimeout(() => { req.destroy(); resolve({ ok: false }); }, timeout);
     req.on('timeout', () => req.destroy());
     req.on('error', () => resolve({ ok: false }));
   });

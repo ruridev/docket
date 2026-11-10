@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const [log, folder, command] = process.argv.slice(2);
-const fd = fs.openSync(log, 'a');
+const fd = fs.openSync(log, 'a', 0o600);
 const child = spawn(command, { cwd: folder, shell: true, windowsHide: true, stdio: ['ignore', fd, fd], env: { ...process.env, FORCE_COLOR: '0' } });
 fs.closeSync(fd);
 child.on('error', (e) => {

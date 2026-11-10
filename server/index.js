@@ -6,15 +6,21 @@ import { DATA_DIR, LOG_DIR, WEB_DIR, portFromArgs } from './paths.js';
 import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
 import { probe, titleOf, iconOf, blocksFraming, scanHttp, listListening } from './ports.js';
-import { processTable, guessLaunch, folderCommands, isAlive } from './procs.js';
+import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js';
 
 const PORT = portFromArgs();
+
+// data/ holds the service commands: only this user may read it.
+fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+fs.chmodSync(DATA_DIR, 0o700);
+
 const store = new Store(DATA_DIR);
 const runner = new Runner(store, LOG_DIR);
 
-// Pick up processes started before the portal was restarted.
+// Pick up processes started before the portal was restarted. A pid that now belongs to another
+// process (after a reboot or pid reuse) is dropped, never adopted.
 for (const [id, r] of Object.entries(store.runs)) {
-  if (!store.get(id) || (!isAlive(r.pid) && r.phase !== 'failed')) store.setRun(id, null);
+  if (!store.get(id) || (r.phase !== 'failed' && !(await stillOurs(r)))) store.setRun(id, null);
   else if (r.phase === 'starting') runner.watch(id);
 }
 

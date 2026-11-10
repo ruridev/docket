@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { parseNetstat, parseLsof, parseTasklist, titleOf, iconOf, blocksFraming } from '../server/ports.js';
+import http from 'node:http';
+import { parseNetstat, parseLsof, parseTasklist, titleOf, iconOf, blocksFraming, probe } from '../server/ports.js';
 import { validateService, portOf } from '../server/store.js';
-import { simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants } from '../server/procs.js';
-import { serviceEnv } from '../server/runner.js';
+import { simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
+import { serviceEnv, Runner } from '../server/runner.js';
 
 test('services do not inherit the portal port', () => {
   const env = serviceEnv({ PORT: '4600', Port: '1', DOCKET_PORTAL_DATA: 'x', PATH: 'p', DOCKET_DATA: 'keep' });
@@ -105,4 +106,57 @@ test('folderCommands lists scripts with the right package manager', () => {
   fs.writeFileSync(path.join(py, 'main.py'), '');
   assert.deepEqual(folderCommands(py).commands, ['python main.py']);
   assert.equal(folderCommands(path.join(py, 'nope')).exists, false);
+});
+
+test('only plain commands are suggested', () => {
+  for (const ok of ['npm start', 'npm run dev', 'pnpm dev:web', 'bun run serve', 'node web.js 4600', 'python3 app/main.py', 'npm run dev -- --port=5174']) assert.equal(safeCommand(ok), ok);
+  for (const bad of ['npm run dev; curl x|sh', 'npm run dev:x; touch /tmp/p #', 'node a.js && id', 'node ${rotation}', 'npx vite', 'npm run $(id)', 'node a.js\nid']) assert.equal(safeCommand(bad), '');
+  const table = [{ pid: 1, ppid: 0, name: 'node', cmd: '/usr/bin/node /x/npm-cli.js run dev; curl x|sh', cwd: os.tmpdir() }];
+  assert.equal(guessLaunch(table, 1).cmd, '');
+  assert.equal(guessLaunch([{ pid: 2, ppid: 0, name: 'node', cmd: 'node ${rotation}', cwd: os.tmpdir() }], 2).cmd, '');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'docket-'));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ scripts: { 'dev:x; touch /tmp/p #': 'x', dev: 'vite' } }));
+  assert.deepEqual(folderCommands(dir).commands, ['npm run dev']);
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ main: 'a.js && id' }));
+  assert.deepEqual(folderCommands(dir), { exists: true, commands: [] });
+});
+
+test('a run is ours only while its pid keeps the same start time', async () => {
+  const procStart = await startTimeOf(process.pid);
+  assert.ok(procStart);
+  const now = new Date().toISOString();
+  assert.equal(await stillOurs({ pid: process.pid, procStart, startedAt: now }), true);
+  assert.equal(await stillOurs({ pid: process.pid, procStart: 'other', startedAt: now }), false);
+  // Without a start time: trusted only when it started after the last boot.
+  assert.equal(await stillOurs({ pid: process.pid, startedAt: now }), true);
+  assert.equal(await stillOurs({ pid: process.pid, startedAt: new Date(Date.now() - (os.uptime() + 60) * 1000).toISOString() }), false);
+});
+
+test('tail reads only the end of a big log', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'docket-'));
+  const lines = Array.from({ length: 20000 }, (_, i) => `line ${i}`);
+  fs.writeFileSync(path.join(dir, 'x.log'), lines.join('\n') + '\n');
+  const runner = new Runner(null, dir);
+  assert.equal(runner.tail('x', 2), 'line 19998\nline 19999');
+  assert.equal(runner.tail('x', 1e6).split('\n').length < 20000, true);
+  assert.equal(runner.tail('missing'), '');
+});
+
+test('probe gives up on a server that drips bytes', async () => {
+  const srv = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    const t = setInterval(() => res.write('x'), 50);
+    res.on('close', () => clearInterval(t));
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  try {
+    const began = Date.now();
+    const r = await probe(`http://127.0.0.1:${srv.address().port}/`, { timeout: 400, wantBody: true });
+    assert.equal(r.ok, false);
+    assert.ok(Date.now() - began < 2000);
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
 });

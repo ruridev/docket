@@ -22,6 +22,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let portal;
 let base;
 let dataDir;
+let portalOut = '';
 const outside = [];
 
 async function call(p, { method = 'GET', body, headers = {} } = {}) {
@@ -52,6 +53,7 @@ before(async () => {
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
   portal = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js'), `--port=${port}`], { env: { ...process.env, DOCKET_PORTAL_DATA: dataDir }, stdio: 'pipe' });
+  portal.stdout.on('data', (c) => { portalOut += c; });
   await waitFor(async () => { try { return (await fetch(base + '/')).ok; } catch { return false; } }, 10000);
 });
 
@@ -73,12 +75,47 @@ test('the API refuses calls from other pages and hosts', async () => {
   assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
 });
 
+test('the page calls the API with no token; the data folder is private', async () => {
+  assert.equal((await call('/api/services')).status, 200);
+  await waitFor(async () => portalOut.includes(`docket portal: ${base.replace('127.0.0.1', 'localhost')}\n`), 5000);
+  assert.equal(fs.existsSync(path.join(dataDir, 'token')), false);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(dataDir).mode & 0o777, 0o700);
+});
+
+test('a saved run whose pid now belongs to another process is dropped, not stopped', { timeout: 30000 }, async () => {
+  // Another portal on its own data folder, with a run pointing at a process it did not start.
+  const ext = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+  outside.push(ext);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'docket-portal-'));
+  fs.writeFileSync(path.join(dir, 'services.json'), JSON.stringify({ services: [{ id: 'old', name: 'Old', url: 'http://127.0.0.1:1', folder: FIX, cmd: 'node web.js 1' }] }));
+  fs.writeFileSync(path.join(dir, 'state.json'), JSON.stringify({ runs: { old: { pid: ext.pid, phase: 'running', startedAt: new Date().toISOString(), port: 1, procStart: 'Thu Jan  1 00:00:00 1970' } } }));
+  const port = await freePort();
+  const p2 = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js'), `--port=${port}`], { env: { ...process.env, DOCKET_PORTAL_DATA: dir }, stdio: 'ignore' });
+  try {
+    await waitFor(async () => { try { return (await fetch(`http://127.0.0.1:${port}/`)).ok; } catch { return false; } }, 10000);
+    const headers = { 'X-Docket-Portal': '1' };
+    const list = await (await fetch(`http://127.0.0.1:${port}/api/services`, { headers })).json();
+    assert.equal(list.services[0].run, null);
+    await fetch(`http://127.0.0.1:${port}/api/services/old/stop`, { method: 'POST', headers });
+    await sleep(300);
+    assert.equal(ext.exitCode, null);
+    assert.equal(ext.signalCode, null);
+  } finally {
+    p2.kill();
+  }
+});
+
 test('start, guess, port conflict with a portal service, and stop', { timeout: 120000 }, async () => {
   const port = await freePort();
   const a = (await call('/api/services', { method: 'POST', body: { name: 'A', url: `http://127.0.0.1:${port}`, folder: FIX, cmd: `node web.js ${port}` } })).data.service;
   assert.equal((await call(`/api/services/${a.id}/start`, { method: 'POST', body: {} })).status, 200);
   const up = await waitFor(async () => { const s = await getSvc(a.id); return s.up && s.run?.phase === 'running' && s; });
   assert.equal(up.run.movedTo, null);
+  assert.ok(JSON.parse(fs.readFileSync(path.join(dataDir, 'state.json'), 'utf8')).runs[a.id].procStart);
+  if (process.platform !== 'win32') {
+    for (const f of ['state.json', 'services.json', `logs/${a.id}.log`]) assert.equal(fs.statSync(path.join(dataDir, f)).mode & 0o777, 0o600, f);
+    assert.equal(fs.statSync(path.join(dataDir, 'logs')).mode & 0o777, 0o700);
+  }
 
   const g = (await call(`/api/guess?url=${encodeURIComponent(`http://localhost:${port}`)}`)).data;
   assert.equal(g.off, false);

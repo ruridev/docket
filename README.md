@@ -52,11 +52,11 @@ docket reads the listening ports from the OS (`netstat` on Windows, `lsof` on ma
 
 ### Stopping a server
 
-docket stops only the servers it started. Those keep running when docket itself stops, and the next docket picks them up again by PID.
+docket stops only the servers it started. Those keep running when docket itself stops, and the next docket picks them up again by PID and process start time; a PID that now belongs to another process (after a reboot) is forgotten, never stopped.
 
 ### Opening a tool
 
-A tool opens in an iframe below the header. Tools that refuse to be embedded (`X-Frame-Options` or CSP `frame-ancestors`) open in a new tab instead.
+A tool opens in a sandboxed iframe below the header (it cannot navigate the docket page away). Tools that refuse to be embedded (`X-Frame-Options` or CSP `frame-ancestors`) open in a new tab instead.
 
 ## Data
 
@@ -73,6 +73,8 @@ Theme and language are saved in the browser only.
 - **docket runs registered commands with your user's permissions.** Do not register a command you do not trust.
 - The page and the API listen on `127.0.0.1` only, so they cannot be reached from another device.
 - Because the API can run commands, it checks the `Host` header, the `Origin` header and a custom `X-Docket-Portal` header to reject requests from other web pages. docket itself cannot be embedded in another page.
+- The API has no password or token: any program on this PC that can reach `127.0.0.1` (a container, for example) can use it. Don't run docket on a PC you share with other people. `data/` is created with mode 0700 and its files with 0600 (owner only).
+- Start commands that docket suggests (from a running process or `package.json`) are offered only in plain forms such as `npm run dev` or `node server.js`; anything else is left for you to type.
 
 ## Troubleshooting
 
