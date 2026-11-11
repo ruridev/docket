@@ -11,7 +11,7 @@ It works with any local web app, such as [docket-gits](https://github.com/ruride
 
 ## Requirements
 
-- Node.js 20 or later
+- Node.js 22 or later
 - Windows or macOS
 
 ## Getting started
@@ -61,7 +61,8 @@ docket reads the listening ports from the OS (`netstat` on Windows, `lsof` on ma
 
 ### Stopping a server
 
-docket stops only the servers it started. Those keep running when docket itself stops, and the next docket picks them up again by PID and process start time; a PID that now belongs to another process (after a reboot) is forgotten, never stopped.
+- A server docket started is stopped by its PID. Those keep running when docket itself stops, and the next docket picks them up again by PID and process start time; a PID that now belongs to another process (after a reboot) is forgotten, never stopped.
+- A server started some other way is stopped through its port: for a `docker compose up` command, docket runs `docker compose stop` in the service's folder; otherwise it stops the local process listening on the service's port. Port forwarders (such as ssh and Docker) and docket itself are never stopped this way, because stopping them would not stop the service, or would stop too much.
 
 ### Opening a tool
 
