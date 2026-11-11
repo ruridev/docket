@@ -67,7 +67,13 @@ function readBody(req) {
 }
 
 function serveStatic(req, res, pathname) {
-  let rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1));
+  let rel;
+  try {
+    rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1));
+  } catch {
+    res.writeHead(400, BASE_HEADERS);
+    return res.end('Bad request');
+  }
   // Signed out, the app page is the sign-in page (its files are public; the API is not).
   if (rel === 'index.html' && !auth.user(req)) rel = 'login.html';
   const file = path.resolve(WEB_DIR, rel);
@@ -183,7 +189,8 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(req, res, url.pathname);
   } catch (e) {
     console.error(e);
-    if (!res.headersSent) send(res, 500, { error: 'internal', message: e.message });
+    // Details (paths, stack) stay in the server log.
+    if (!res.headersSent) send(res, 500, { error: 'internal' });
   }
 });
 

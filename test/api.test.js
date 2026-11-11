@@ -84,6 +84,10 @@ test('the API refuses calls from other pages and hosts', async () => {
   assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
 });
 
+test('a malformed path answers 400, not a server error', async () => {
+  assert.equal((await fetch(base + '/%E0')).status, 400);
+});
+
 test('signed out, the API answers 401 and the page is the sign-in page', async () => {
   assert.equal((await call('/api/services', { headers: { Cookie: '' } })).status, 401);
   assert.equal((await call('/api/services', { headers: { Cookie: 'docket_portal_session=YWxpY2U.9999999999999.forged' } })).status, 401);
