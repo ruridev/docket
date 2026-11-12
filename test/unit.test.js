@@ -110,7 +110,7 @@ test('folderCommands lists scripts with the right package manager', () => {
   assert.deepEqual(folderCommands(dir).commands, ['pnpm start', 'pnpm dev']);
   const py = fs.mkdtempSync(path.join(os.tmpdir(), 'docket-'));
   fs.writeFileSync(path.join(py, 'main.py'), '');
-  assert.deepEqual(folderCommands(py).commands, ['python main.py']);
+  assert.deepEqual(folderCommands(py).commands, [process.platform === 'win32' ? 'python main.py' : 'python3 main.py']);
   assert.equal(folderCommands(path.join(py, 'nope')).exists, false);
 });
 

@@ -6,9 +6,16 @@ import https from 'node:https';
 
 const IS_WIN = process.platform === 'win32';
 
+const missing = new Set();
+
 function run(cmd, args, opts = {}) {
   return new Promise((resolve) => {
     execFile(cmd, args, { windowsHide: true, maxBuffer: 16 * 1024 * 1024, timeout: 15000, ...opts }, (err, stdout) => {
+      // Without lsof (not installed by default on some Linux distributions) docket finds no servers: say so once
+      if (err?.code === 'ENOENT' && !missing.has(cmd)) {
+        missing.add(cmd);
+        console.warn(`docket: \`${cmd}\` was not found, so running servers can't be found. Install it and restart docket.`);
+      }
       resolve(err && !stdout ? '' : String(stdout));
     });
   });

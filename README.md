@@ -12,7 +12,7 @@ It works with any local web app, such as [docket-gits](https://github.com/ruride
 ## Requirements
 
 - Node.js 22 or later
-- Windows or macOS
+- Windows or macOS (Linux may work with `lsof` installed, but is not tested)
 
 ## Getting started
 

@@ -147,7 +147,9 @@ export function folderCommands(folder) {
     if (!out.length && pkg.main) out.push(`node ${pkg.main}`);
   } catch { /* no package.json */ }
   for (const f of ['server.js', 'index.js', 'app.js']) if (!out.length && has(f)) out.push(`node ${f}`);
-  for (const f of ['main.py', 'app.py', 'server.py']) if (has(f)) out.push(`python ${f}`);
-  if (has('manage.py')) out.push('python manage.py runserver');
+  // macOS and most Linux distributions have only python3
+  const py = IS_WIN ? 'python' : 'python3';
+  for (const f of ['main.py', 'app.py', 'server.py']) if (has(f)) out.push(`${py} ${f}`);
+  if (has('manage.py')) out.push(`${py} manage.py runserver`);
   return { exists: true, commands: [...new Set(out.filter(safeCommand))].slice(0, 6) };
 }
