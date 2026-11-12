@@ -63,8 +63,8 @@ async function serviceStatus(s) {
 
 // ---------- HTTP plumbing ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.json': 'application/json' };
-// Scripts and styles only from this server. Registered tools are framed from their own address, and their
-// icons may come from anywhere (images cannot run code)
+// Scripts and styles only from this server. Registered tools are framed from their own address, and so are
+// their icons (iconOf keeps only the tool's own origin)
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src * data:; frame-src http: https:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 const BASE_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': CSP, 'Referrer-Policy': 'no-referrer' };
 

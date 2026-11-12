@@ -113,7 +113,10 @@ function decodeEntities(s) {
   return s.replace(/&(amp|lt|gt|quot|#39|#x27);/g, (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'" })[e]);
 }
 
-/** Finds the page's icon: a <link rel="icon"> (data: URLs are kept as they are) or /favicon.ico. */
+/**
+ * Finds the page's icon: a <link rel="icon"> (data: URLs are kept as they are) or /favicon.ico.
+ * Only the page's own origin: an icon on another host would tell that host each time the portal is opened.
+ */
 export function iconOf(html, pageUrl) {
   for (const m of (html || '').matchAll(/<link\b[^>]*>/gi)) {
     const tag = m[0];
@@ -124,7 +127,7 @@ export function iconOf(html, pageUrl) {
     if (/^data:image\//i.test(v)) return v;
     try {
       const u = new URL(v, pageUrl + '/');
-      if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
+      if (u.origin === new URL(pageUrl).origin) return u.href;
     } catch { /* next */ }
   }
   try { return new URL('/favicon.ico', pageUrl).href; } catch { return ''; }

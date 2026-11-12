@@ -52,7 +52,8 @@ test('titleOf and iconOf read the page head', () => {
   assert.equal(iconOf('<link rel="icon" href="data:image/svg+xml,%3Csvg%3E">', 'http://x:1'), 'data:image/svg+xml,%3Csvg%3E');
   assert.equal(iconOf('<p>no icon</p>', 'http://localhost:8765'), 'http://localhost:8765/favicon.ico');
   // Only web and image data URLs: anything else falls back to /favicon.ico
-  for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd']) {
+  // Icons on another host would tell that host you opened the portal: only the page's own origin
+  for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'https://cdn.example/i.png', '//cdn.example/i.png', 'http://localhost:4000/i.png']) {
     assert.equal(iconOf(`<link rel="icon" href="${bad}">`, 'http://localhost:3000'), 'http://localhost:3000/favicon.ico', bad);
   }
   assert.equal(iconOf('<link href="icon.svg" rel="icon" type="image/svg+xml">', 'http://127.0.0.1:8765'), 'http://127.0.0.1:8765/icon.svg');
