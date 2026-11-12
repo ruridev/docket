@@ -14,9 +14,11 @@ export async function processTable(withCwd = []) {
     try { return JSON.parse(out.trim() || '[]'); } catch { return []; }
   }
   const rows = [];
-  for (const line of (await run('ps', ['-axo', 'pid=,ppid=,comm=,args='])).split('\n')) {
-    const m = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
-    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: m[3].split('/').pop(), cmd: m[4], cwd: null });
+  // Other users' command lines can hold their secrets, so only this user's are kept
+  const me = process.getuid?.();
+  for (const line of (await run('ps', ['-axo', 'pid=,ppid=,uid=,comm=,args='])).split('\n')) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
+    if (m) rows.push({ pid: Number(m[1]), ppid: Number(m[2]), name: m[4].split('/').pop(), cmd: Number(m[3]) === me ? m[5] : '', cwd: null });
   }
   for (const r of rows) {
     if (!withCwd.includes(r.pid)) continue;
