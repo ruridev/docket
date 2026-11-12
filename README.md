@@ -104,6 +104,11 @@ Theme and language are saved in the browser only.
 
 **Starting over.** Stop the servers docket started, stop docket, then delete `data/`. If you delete `data/` first, docket can no longer stop those servers.
 
+## Related
+
+- [docket-gits](https://github.com/ruridev/docket-gits): review GitHub pull requests with an AI agent, deciding on each finding yourself.
+- [docket-jobs](https://github.com/ruridev/docket-jobs): manage the background jobs that start with your PC.
+
 ## Development
 
 ```bash
