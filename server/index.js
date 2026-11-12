@@ -2,6 +2,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { DATA_DIR, LOG_DIR, WEB_DIR, portFromArgs } from './paths.js';
 import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
@@ -17,9 +18,21 @@ if (process.argv.includes('--reset-password')) {
   process.exit(0);
 }
 
+// File modes do nothing on Windows: give the folder an ACL for this user only (its files inherit it).
+function windowsOwnerOnly(dir) {
+  if (process.platform !== 'win32') return;
+  const user = process.env.USERDOMAIN ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}` : process.env.USERNAME;
+  try {
+    execFileSync('icacls', [dir, '/inheritance:r', '/grant:r', `${user}:(OI)(CI)F`], { stdio: 'ignore', windowsHide: true });
+  } catch {
+    console.warn(`Could not limit ${path.basename(dir)}/ to this user with icacls`);
+  }
+}
+
 // data/ holds the service commands: only this user may read it.
 fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
 fs.chmodSync(DATA_DIR, 0o700);
+windowsOwnerOnly(DATA_DIR);
 
 const store = new Store(DATA_DIR);
 const runner = new Runner(store, LOG_DIR);

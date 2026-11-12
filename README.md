@@ -41,9 +41,11 @@ To update, stop docket, run `git pull` and start it again. Your services are in 
 
 The first time you open docket, it asks you to create an account: a name and a password of 8 characters or more. There is one account and no email, because nothing is ever sent out and the account only guards this app on this PC. From then on every API call needs the signed-in session.
 
+- Creating the account needs a setup code. While there is no account, the server prints a link with the code when it starts (`Create the account: http://localhost:4600/?setup=...`), and the code is also in `data/setup-code` (readable by your user only). Opening the link fills in the code; the code is removed once the account exists.
 - The account is kept in `data/auth.json` (0600): a scrypt hash of the password and the secret that signs the session cookie. A session lasts 30 days and survives restarts.
-- Forgot the password? Run `node server/index.js --reset-password` in this folder. It removes only the account; your data stays, and the next visit asks you to create the account again.
-- Create the account right after the first start: until then, any program on this PC that can reach the port could create it first.
+- Browsers send `localhost` cookies to every port, so the cookie alone is not a session: signing in also gives the page an API token, kept in this browser's storage for this address only and sent with every API call. Another browser or a cleared storage asks you to sign in again.
+- **Sign out** ends every session of this account, in every browser.
+- Forgot the password? Run `node server/index.js --reset-password` in this folder. It removes only the account and prints a new setup code; your data stays.
 - docket, docket-gits and docket-jobs each have their own account. Inside the docket portal, each tool shows its own sign-in page the first time.
 
 ## How it works
@@ -84,7 +86,10 @@ Theme and language are saved in the browser only.
 - **docket runs registered commands with your user's permissions.** Do not register a command you do not trust.
 - The page and the API listen on `127.0.0.1` only, so they cannot be reached from another device.
 - Because the API can run commands, it checks the `Host` header, the `Origin` header and a custom `X-Docket-Portal` header to reject requests from other web pages. docket itself cannot be embedded in another page.
-- The API needs the signed-in session (see [Signing in](#signing-in)). A program running as your user can still read `data/`, so this is no defense against malware on your account. Don't run docket on a PC you share with other people. `data/` is created with mode 0700 and its files with 0600 (owner only).
+- The API needs the signed-in session and its API token (see [Signing in](#signing-in)). A program running as your user can still read `data/`, so this is no defense against malware on your account. Don't run docket on a PC you share with other people. `data/` is created with mode 0700 and its files with 0600 (owner only); on Windows it gets an access list for your user only (`icacls`).
+- The page loads scripts only from docket itself (`Content-Security-Policy`).
+- To show each tool's status and icon, docket requests every registered address, remote ones too, and the page loads their icons.
+- **Stop** for a tool docket did not start ends the local process listening on its port, and only for `localhost`, `127.0.0.1` or `[::1]` addresses.
 - Start commands that docket suggests (from a running process or `package.json`) are offered only in plain forms such as `npm run dev` or `node server.js`; anything else is left for you to type.
 
 ## Troubleshooting
