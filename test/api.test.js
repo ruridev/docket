@@ -24,19 +24,22 @@ let base;
 let dataDir;
 let portalOut = '';
 let session = '';
+let token = '';
 const outside = [];
 
-// Creates the account on a fresh portal and returns its session cookie.
-async function signUp(at) {
-  const res = await fetch(at + '/api/auth/setup', { method: 'POST', headers: { 'X-Docket-Portal': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'alice', password: 'correct horse' }) });
+// Creates the account on a fresh portal (with the setup code from its data folder) and returns
+// the session cookie and the API token.
+async function signUp(at, dir) {
+  const code = fs.readFileSync(path.join(dir, 'setup-code'), 'utf8').trim();
+  const res = await fetch(at + '/api/auth/setup', { method: 'POST', headers: { 'X-Docket-Portal': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'alice', password: 'correct horse', code }) });
   assert.equal(res.status, 200);
-  return res.headers.get('set-cookie').split(';')[0];
+  return { cookie: res.headers.get('set-cookie').split(';')[0], token: (await res.json()).token };
 }
 
 async function call(p, { method = 'GET', body, headers = {} } = {}) {
   const res = await fetch(base + p, {
     method,
-    headers: { 'X-Docket-Portal': '1', Cookie: session, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
+    headers: { 'X-Docket-Portal': token, Cookie: session, ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
   let data = null;
@@ -63,7 +66,8 @@ before(async () => {
   portal = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js'), `--port=${port}`], { env: { ...process.env, DOCKET_PORTAL_DATA: dataDir }, stdio: 'pipe' });
   portal.stdout.on('data', (c) => { portalOut += c; });
   await waitFor(async () => { try { return (await fetch(base + '/')).ok; } catch { return false; } }, 10000);
-  session = await signUp(base);
+  await waitFor(async () => portalOut.includes('?setup='), 5000);
+  ({ cookie: session, token } = await signUp(base, dataDir));
 });
 
 after(async () => {
@@ -93,6 +97,8 @@ test('signed out, the API answers 401 and the page is the sign-in page', async (
   assert.equal((await call('/api/services', { headers: { Cookie: 'docket_portal_session=YWxpY2U.9999999999999.forged' } })).status, 401);
   assert.match(await (await fetch(base + '/')).text(), /login\.js/);
   assert.match(await (await fetch(base + '/', { headers: { Cookie: session } })).text(), /app\.js/);
+  // The cookie alone (as another localhost port would get it) or with the plain header is not enough
+  for (const h of ['1', 'x', '']) assert.equal((await call('/api/services', { headers: { 'X-Docket-Portal': h } })).status, h ? 401 : 403, h);
   assert.equal((await call('/api/auth/setup', { method: 'POST', body: { name: 'mallory', password: 'something long' } })).status, 409);
   if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(dataDir, 'auth.json')).mode & 0o777, 0o600);
 });
@@ -115,7 +121,9 @@ test('a saved run whose pid now belongs to another process is dropped, not stopp
   const p2 = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js'), `--port=${port}`], { env: { ...process.env, DOCKET_PORTAL_DATA: dir }, stdio: 'ignore' });
   try {
     await waitFor(async () => { try { return (await fetch(`http://127.0.0.1:${port}/`)).ok; } catch { return false; } }, 10000);
-    const headers = { 'X-Docket-Portal': '1', Cookie: await signUp(`http://127.0.0.1:${port}`) };
+    await waitFor(() => fs.existsSync(path.join(dir, 'setup-code')), 5000);
+    const s = await signUp(`http://127.0.0.1:${port}`, dir);
+    const headers = { 'X-Docket-Portal': s.token, Cookie: s.cookie };
     const list = await (await fetch(`http://127.0.0.1:${port}/api/services`, { headers })).json();
     assert.equal(list.services[0].run, null);
     await fetch(`http://127.0.0.1:${port}/api/services/old/stop`, { method: 'POST', headers });

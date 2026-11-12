@@ -10,10 +10,10 @@ import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js
 import { createAuth } from './auth.js';
 
 const PORT = portFromArgs();
-const auth = createAuth({ file: path.join(DATA_DIR, 'auth.json'), cookie: 'docket_portal_session' });
+const auth = createAuth({ file: path.join(DATA_DIR, 'auth.json'), cookie: 'docket_portal_session', header: 'x-docket-portal' });
 
 if (process.argv.includes('--reset-password')) {
-  console.log(auth.reset() ? 'Removed the account. Open docket to create it again.' : 'There is no account.');
+  console.log(auth.reset() ? 'Removed the account. Open docket and create it again with setup code ' + auth.setupCode() + '.' : 'There is no account.');
   process.exit(0);
 }
 
@@ -93,10 +93,10 @@ async function api(req, res, url) {
   // The API can run commands on this PC: only this page may call it. A custom header forces a
   // CORS preflight that this server never approves, and a sent Origin must be ours.
   const origin = req.headers.origin;
-  if (req.headers['x-docket-portal'] !== '1' || (origin && !allowedOrigins.has(origin))) return send(res, 403, { error: 'forbidden' });
+  if (!req.headers['x-docket-portal'] || (origin && !allowedOrigins.has(origin))) return send(res, 403, { error: 'forbidden' });
   const signIn = await auth.route(req, res, url.pathname, () => readBody(req));
   if (signIn) return send(res, signIn.status, signIn.body);
-  if (!auth.user(req)) return send(res, 401, { error: 'signin' });
+  if (!auth.apiUser(req)) return send(res, 401, { error: 'signin' });
 
   const parts = url.pathname.split('/').filter(Boolean).slice(1); // after "api"
   const m = req.method;
@@ -200,5 +200,10 @@ server.on('error', (e) => {
   process.exit(1);
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`docket portal: http://localhost:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => {
+  // Make the setup code before announcing the server, so it exists once the address is printed
+  const code = !auth.hasAccount() && auth.setupCode();
+  console.log(`docket portal: http://localhost:${PORT}`);
+  if (code) console.log(`Create the account: http://localhost:${PORT}/?setup=${code}`);
+});
 
