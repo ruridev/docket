@@ -209,6 +209,8 @@ export class Runner {
       const ok = await new Promise((res) => execFile('docker', ['compose', 'stop'], { cwd: s.folder, windowsHide: true, timeout: 60_000 }, (err) => res(!err)));
       return ok ? { ok: true } : { error: 'stop_failed' };
     }
+    // Only a service on this PC: for a remote address the local process on that port is someone else
+    if (!LOOPBACK_URL.test(hostOf(s.url))) return { error: 'not_stoppable' };
     const port = portOf(s.url);
     const [rows, names] = await Promise.all([listListening(), processNames()]);
     const pids = [...new Set(rows.filter((x) => x.port === port && LOCAL_HOST.test(x.host)).map((x) => x.pid))];
@@ -223,6 +225,8 @@ export class Runner {
 }
 
 const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
+const LOOPBACK_URL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
+const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ''; } };
 const FORWARDERS = /^(ssh|sshd|.*docker.*|vpnkit.*|.*lima.*|.*orbstack.*|colima|kubectl|qemu.*|podman.*|wslrelay)$/i;
 
 /** True for a process that serves the port itself, so stopping it stops the service. */

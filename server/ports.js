@@ -121,8 +121,11 @@ export function iconOf(html, pageUrl) {
     const href = /\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
     const v = href && (href[2] ?? href[3] ?? href[4]);
     if (!v) continue;
-    if (v.startsWith('data:')) return v;
-    try { return new URL(v, pageUrl + '/').href; } catch { /* next */ }
+    if (/^data:image\//i.test(v)) return v;
+    try {
+      const u = new URL(v, pageUrl + '/');
+      if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
+    } catch { /* next */ }
   }
   try { return new URL('/favicon.ico', pageUrl).href; } catch { return ''; }
 }

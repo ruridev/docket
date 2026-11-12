@@ -1,6 +1,5 @@
 // Facts about running processes: parent/child tree, command line, working folder.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { run } from './ports.js';
 import { ROOT } from './paths.js';
@@ -59,12 +58,14 @@ export async function startTimeOf(pid) {
 
 /**
  * True when the run's pid is still the process the portal started. A different start time means
- * the pid was reused; a run without one is trusted only if it started after the last boot.
+ * the pid was reused. A run without a start time (it is saved a moment after the start) is trusted
+ * only for a short while, since a pid can be reused any time after its process exits.
  */
+const START_TIME_GRACE_MS = 60_000;
 export async function stillOurs(r) {
   if (!r || !isAlive(r.pid)) return false;
   if (r.procStart) return (await startTimeOf(r.pid)) === r.procStart;
-  return Date.parse(r.startedAt) > Date.now() - os.uptime() * 1000;
+  return Date.parse(r.startedAt) > Date.now() - START_TIME_GRACE_MS;
 }
 
 /** The nearest folder at or above dir that looks like a project root. */

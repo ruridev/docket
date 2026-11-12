@@ -51,6 +51,10 @@ test('titleOf and iconOf read the page head', () => {
   assert.equal(iconOf(html, 'http://localhost:3000'), 'http://localhost:3000/static/i.png');
   assert.equal(iconOf('<link rel="icon" href="data:image/svg+xml,%3Csvg%3E">', 'http://x:1'), 'data:image/svg+xml,%3Csvg%3E');
   assert.equal(iconOf('<p>no icon</p>', 'http://localhost:8765'), 'http://localhost:8765/favicon.ico');
+  // Only web and image data URLs: anything else falls back to /favicon.ico
+  for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd']) {
+    assert.equal(iconOf(`<link rel="icon" href="${bad}">`, 'http://localhost:3000'), 'http://localhost:3000/favicon.ico', bad);
+  }
   assert.equal(iconOf('<link href="icon.svg" rel="icon" type="image/svg+xml">', 'http://127.0.0.1:8765'), 'http://127.0.0.1:8765/icon.svg');
 });
 
@@ -129,9 +133,9 @@ test('a run is ours only while its pid keeps the same start time', async () => {
   const now = new Date().toISOString();
   assert.equal(await stillOurs({ pid: process.pid, procStart, startedAt: now }), true);
   assert.equal(await stillOurs({ pid: process.pid, procStart: 'other', startedAt: now }), false);
-  // Without a start time: trusted only when it started after the last boot.
+  // Without a start time: trusted only for a moment after the start, since the pid may be reused later.
   assert.equal(await stillOurs({ pid: process.pid, startedAt: now }), true);
-  assert.equal(await stillOurs({ pid: process.pid, startedAt: new Date(Date.now() - (os.uptime() + 60) * 1000).toISOString() }), false);
+  assert.equal(await stillOurs({ pid: process.pid, startedAt: new Date(Date.now() - 5 * 60_000).toISOString() }), false);
 });
 
 test('tail reads only the end of a big log', () => {
@@ -187,5 +191,12 @@ test('stop ends a server the portal did not start, found by its port', async () 
     assert.equal(child.signalCode, 'SIGTERM');
   } finally {
     child.kill();
+  }
+});
+
+test('stopping a service started elsewhere never touches a local process for a remote address', async () => {
+  for (const url of ['https://example.com', 'http://192.0.2.1:5432', 'http://localhost.example.com:3000']) {
+    const runner = new Runner({ get: () => ({ id: 'x', url, folder: '', cmd: '' }) }, os.tmpdir());
+    assert.deepEqual(await runner.stopOutside('x'), { error: 'not_stoppable' }, url);
   }
 });

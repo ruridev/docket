@@ -86,6 +86,7 @@ test('the API refuses calls from other pages and hosts', async () => {
   assert.equal(status, 403);
   const page = await fetch(base + '/');
   assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  assert.match(page.headers.get('content-security-policy'), /script-src 'self';/);
 });
 
 test('a malformed path answers 400, not a server error', async () => {
