@@ -91,6 +91,7 @@ Theme and language are saved in the browser only.
 - To show each tool's status and icon, docket requests every registered address, remote ones too, and the page loads their icons.
 - **Stop** for a tool docket did not start ends the local process listening on its port, and only for `localhost`, `127.0.0.1` or `[::1]` addresses.
 - Start commands that docket suggests (from a running process or `package.json`) are offered only in plain forms such as `npm run dev` or `node server.js`; anything else is left for you to type.
+- Found a security problem? Please report it privately through [GitHub's private vulnerability reporting](https://github.com/ruridev/docket/security/advisories/new), not in a public issue.
 
 ## Troubleshooting
 
