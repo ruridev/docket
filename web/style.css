@@ -65,6 +65,10 @@ a.icon-btn { color: var(--muted); }
 
 /* home */
 .home { flex: 1 1 auto; overflow-y: auto; }
+.site-foot { flex: none; display: flex; justify-content: flex-end; padding: 6px 16px; border-top: 1px solid var(--border); background: var(--panel); }
+.site-foot a { display: inline-flex; color: var(--muted); }
+.site-foot a:hover { color: var(--text); }
+body.in-view .site-foot { display: none; }
 .home-inner { padding: 28px 24px; display: flex; flex-direction: column; gap: 20px; max-width: 1200px; margin: 0 auto; }
 .home-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
 .home-title h1 { margin: 0; font-size: 22px; font-weight: 600; }
@@ -159,7 +163,7 @@ a.icon-btn { color: var(--muted); }
 
 /* green: the same shapes as docket-gits */
 :root[data-theme="green"] body { font-family: "IBM Plex Sans KR", var(--font); }
-:root[data-theme="green"] .hdr { background: var(--bg); }
+:root[data-theme="green"] :is(.hdr, .site-foot) { background: var(--bg); }
 :root[data-theme="green"] :is(h1, h2, h3, .brand-name, .snav button) { font-family: "Barlow Condensed", "IBM Plex Sans KR", sans-serif; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
 :root[data-theme="green"] .brand-name { font-weight: 300; letter-spacing: 0; color: var(--accent); }
 :root[data-theme="green"] :is(.btn, .count, .ftab, .chip, .pill, .mono) { font-family: "Space Mono", "IBM Plex Sans KR", monospace; }
@@ -174,6 +178,7 @@ a.icon-btn { color: var(--muted); }
 :root[data-theme="g6"] { --mono: "Fusion Pixel KO", ui-monospace, monospace; }
 :root[data-theme="g6"] body * { border-radius: 0 !important; box-shadow: none !important; font-weight: 400 !important; }
 :root[data-theme="g6"] .hdr { border-bottom: 2px solid var(--text); }
+:root[data-theme="g6"] .site-foot { border-top: 2px solid var(--text); }
 :root[data-theme="g6"] .btn { border: 0; background: none; padding: 0 4px; color: var(--text); }
 :root[data-theme="g6"] .btn:not(.btn-primary)::before { content: "["; margin-right: 2px; }
 :root[data-theme="g6"] .btn:not(.btn-primary)::after { content: "]"; margin-left: 2px; }
