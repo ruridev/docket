@@ -63,6 +63,12 @@ function movedUrl(s) {
 const isLive = (s) => s.up || (!!run(s)?.movedTo && run(s).alive);
 const effectiveUrl = (s) => (!s.up && run(s)?.movedTo ? movedUrl(s) : s.url);
 const canStart = (s) => !!s.cmd && !isLive(s) && !(run(s)?.alive);
+// Without a start command the portal can't start it: show the button disabled, with a tooltip.
+function startBtn(s, cls, label) {
+  if (canStart(s)) return `<button class="btn${cls}" type="button" data-start="${s.id}">${esc(label)}</button>`;
+  if (s.cmd || isLive(s) || run(s)?.alive) return '';
+  return `<span class="btn-wrap" title="${esc(tr('runManual'))}"><button class="btn${cls}" type="button" disabled>${esc(label)}</button></span>`;
+}
 const canStop = (s) => (run(s) ? run(s).alive && run(s).phase !== 'stopping' : isLive(s));
 const portOf = (url) => { try { const u = new URL(url); return Number(u.port || (u.protocol === 'https:' ? 443 : 80)); } catch { return null; } };
 
@@ -195,7 +201,7 @@ function renderHome() {
         <p>${esc(s.desc || tr('noDesc'))}</p>
         <div class="actions">
           <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-          ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
+          ${startBtn(s, '', tr('run'))}
           <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
           <span class="grow"></span>
           ${canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
@@ -268,7 +274,7 @@ function renderView() {
         <span class="small" style="color:var(--danger)">${esc(tr('failedText', { code: r.exitCode ?? '?' }))}</span>
         <pre class="log">${esc(logs.get(s.id) || '')}</pre></div>` : ''}
       <div class="actions" style="justify-content:center">
-        ${canStart(s) ? `<button class="btn btn-primary" type="button" data-start="${s.id}">${esc(tr('startServer'))}</button>` : ''}
+        ${startBtn(s, ' btn-primary', tr('startServer'))}
         <button class="btn" type="button" data-act="retry">${esc(tr('retry'))}</button>
         <button class="btn" type="button" data-edit="${s.id}">${esc(tr('changeSettings'))}</button>
       </div>`;
@@ -282,6 +288,8 @@ const closeIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 function closeModal() {
   modal = null;
   $('#modal').innerHTML = '';
+  // The header opens together with the modal from the floating button, so it closes with it too.
+  if (document.body.classList.contains('hdr-open')) { document.body.classList.remove('hdr-open'); renderHeader(); }
 }
 
 function renderList() {
@@ -301,7 +309,7 @@ function renderList() {
       <p>${esc(s.desc || tr('noDesc'))}</p>
       <div class="actions">
         <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-        ${canStart(s) ? `<button class="btn" type="button" data-start="${s.id}">${esc(tr('run'))}</button>` : ''}
+        ${startBtn(s, '', tr('run'))}
         <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
         ${canStop(s) ? `<span class="grow"></span><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
       </div></article>`;
@@ -544,8 +552,9 @@ document.addEventListener('click', async (e) => {
   const d = t.dataset;
   if (t.id === 'fab') {
     if (fabMoved) { fabMoved = false; return; } // end of a drag, not a click
-    document.body.classList.toggle('hdr-open');
-    return renderHeader();
+    const open = document.body.classList.toggle('hdr-open');
+    renderHeader();
+    return open ? openList('all') : closeModal();
   }
   if (t.id === 'brand') { view = 'home'; return render(); }
   if (t.id === 'addBtn') return openEdit(null);

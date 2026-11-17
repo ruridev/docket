@@ -45,6 +45,9 @@ a.btn { color: var(--text); }
 .btn:hover:not(:disabled) { border-color: var(--muted); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .btn-primary:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.1); }
+/* A disabled button gets no hover, so its wrapper carries the tooltip. */
+.btn-wrap { display: inline-flex; }
+.btn-wrap .btn { pointer-events: none; }
 .btn-danger { color: var(--danger); }
 .icon-btn { width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; padding: 0; text-decoration: none; flex: none; }
 a.icon-btn { color: var(--muted); }
