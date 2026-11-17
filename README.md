@@ -1,6 +1,8 @@
 <p align="center"><img src="web/icon.svg" width="96" alt=""></p>
 
-# docket
+<h1 align="center">docket</h1>
+
+<p align="center">One page for the local web tools you run on your PC.</p>
 
 docket is one page for the web tools you run on your own PC. Register a local web app once, then open it, start it and stop it from the same place, instead of keeping a terminal and a browser tab open for each one.
 
