@@ -7,7 +7,7 @@ docket is one page for the web tools you run on your own PC. Register a local we
 - **Find** the web servers already running on your PC, and fill in their folder and start command for you.
 - **Watch ports**: see what is running, what is not responding, and which program holds a port before you start something on it.
 
-It works with any local web app, such as [docket-gits](https://github.com/ruridev/docket-gits), [docket-jobs](https://github.com/ruridev/docket-jobs), a Vite dev server or a Python app.
+It works with any local web app, such as a Vite dev server or a Python app.
 
 ## Requirements
 
@@ -46,7 +46,6 @@ The first time you open docket, it asks you to create an account: a name and a p
 - Browsers send `localhost` cookies to every port, so the cookie alone is not a session: signing in also gives the page an API token, kept in this browser's storage for this address only and sent with every API call. Another browser or a cleared storage asks you to sign in again.
 - **Sign out** ends every session of this account, in every browser.
 - Forgot the password? Run `node server/index.js --reset-password` in this folder. It removes only the account and prints a new setup code; your data stays.
-- docket, docket-gits and docket-jobs each have their own account. Inside the docket portal, each tool shows its own sign-in page the first time.
 
 ## How it works
 
@@ -104,11 +103,6 @@ Theme and language are saved in the browser only.
 **A server exits right after starting.** Check that the command works in a terminal from the same folder. The full output is in `data/logs/<id>.log`.
 
 **Starting over.** Stop the servers docket started, stop docket, then delete `data/`. If you delete `data/` first, docket can no longer stop those servers.
-
-## Related
-
-- [docket-gits](https://github.com/ruridev/docket-gits): review GitHub pull requests with an AI agent, deciding on each finding yourself.
-- [docket-jobs](https://github.com/ruridev/docket-jobs): manage the background jobs that start with your PC.
 
 ## Development
 
