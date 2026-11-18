@@ -45,7 +45,7 @@ export async function processNames() {
 /** All processes as [{ pid, ppid, name, cmd, cwd }]; cwd is filled only for the pids in withCwd. */
 export async function processTable(withCwd = []) {
   if (IS_WIN) {
-    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-All', '-Ids', withCwd.join(',') || '0']);
+    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-Ids', withCwd.join(',') || '0']);
     try { return JSON.parse(out.trim() || '[]'); } catch { return []; }
   }
   const rows = [];

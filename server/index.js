@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { DATA_DIR, LOG_DIR, WEB_DIR, portFromArgs } from './paths.js';
 import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
-import { probe, titleOf, iconOf, blocksFraming } from './page.js';
+import { probe, iconOf, blocksFraming } from './page.js';
 import { scanHttp, listListening } from './ports.js';
 import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js';
 import { createAuth } from './auth.js';
@@ -55,7 +55,7 @@ async function serviceStatus(s) {
   if (res.ok && (!page || Date.now() - page.at > PAGE_TTL)) {
     const full = await probe(s.url, { timeout: 2500, wantBody: true });
     if (full.ok && full.status < 400) {
-      page = { at: Date.now(), icon: iconOf(full.body, s.url), title: titleOf(full.body), framable: !blocksFraming(full.headers) };
+      page = { at: Date.now(), icon: iconOf(full.body, s.url), framable: !blocksFraming(full.headers) };
       pageCache.set(s.url, page);
     }
   }

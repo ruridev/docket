@@ -113,7 +113,6 @@ function renderHeader() {
   document.body.classList.toggle('in-view', !!s);
   if (!s) document.body.classList.remove('hdr-open');
   $('#fab').hidden = !s;
-  $('#fab').setAttribute('aria-label', 'docket');
   $('#fab').setAttribute('aria-expanded', String(document.body.classList.contains('hdr-open')));
   $('#fab').innerHTML = s ? `${$('#brand .logo').outerHTML}<span class="dot ${statusOf(s).cls}"></span>` : '';
   placeFab();
