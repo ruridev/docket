@@ -220,6 +220,8 @@ function ensureFrame(s) {
     // No top-navigation: a framed service can't move the portal page away.
     el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals');
     el.title = s.name;
+    // Tell the service it may ask us to open links (see the 'docket:open' handler)
+    el.addEventListener('load', () => el.contentWindow?.postMessage({ type: 'docket:portal' }, '*'));
     el.src = src;
     $('#frames').appendChild(el);
     f = { el, src, wasUp: true };
@@ -232,6 +234,15 @@ function ensureFrame(s) {
   }
   return f;
 }
+
+// A framed service asks us to open a link in its named tab. Opened from this window, the tab stays
+// reusable after a reload; opened from the iframe, a reload recreates the iframe and loses it.
+window.addEventListener('message', (e) => {
+  if (e.data?.type !== 'docket:open' || ![...frames.values()].some((f) => f.el.contentWindow === e.source)) return;
+  let url;
+  try { url = new URL(e.data.url); } catch { return; }
+  if (url.protocol === 'https:' || url.protocol === 'http:') window.open(url.href, 'docket-viewer');
+});
 
 function renderView() {
   const s = svc(view);
