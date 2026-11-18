@@ -2,8 +2,18 @@
 import http from 'node:http';
 import https from 'node:https';
 
-/** Answers whether an HTTP server answers at url. Any response (even 404) counts. */
-export function probe(url, { timeout = 1500, wantBody = false } = {}) {
+/**
+ * Answers whether an HTTP server answers at url. Any response (even 404) counts.
+ * tries > 1 asks again after a miss, so a server busy for a moment isn't taken for stopped
+ * (a refused connection fails at once, so a stopped server costs no extra wait).
+ */
+export async function probe(url, { tries = 1, ...opts } = {}) {
+  let res;
+  for (let i = 0; i < tries && !res?.ok; i++) res = await probeOnce(url, opts);
+  return res;
+}
+
+function probeOnce(url, { timeout = 1500, wantBody = false } = {}) {
   return new Promise((done) => {
     let u;
     try { u = new URL(url); } catch { return done({ ok: false }); }

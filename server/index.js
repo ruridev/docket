@@ -50,7 +50,7 @@ const pageCache = new Map(); // url -> { at, icon, framable }
 const PAGE_TTL = 10 * 60_000;
 
 async function serviceStatus(s) {
-  const res = await probe(s.url, { timeout: 1500 });
+  const res = await probe(s.url, { timeout: 1500, tries: 2 });
   let page = pageCache.get(s.url);
   if (res.ok && (!page || Date.now() - page.at > PAGE_TTL)) {
     const full = await probe(s.url, { timeout: 2500, wantBody: true });

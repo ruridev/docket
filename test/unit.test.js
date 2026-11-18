@@ -168,6 +168,22 @@ test('probe gives up on a server that drips bytes', async () => {
   }
 });
 
+test('probe with tries: a server busy for one check still counts as up', async () => {
+  let seen = 0;
+  // Ignores the first request (busy), answers the next one
+  const srv = http.createServer((req, res) => { if (++seen > 1) res.end('ok'); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${srv.address().port}/`;
+  try {
+    assert.equal((await probe(url, { timeout: 300 })).ok, false);
+    seen = 0;
+    assert.equal((await probe(url, { timeout: 300, tries: 2 })).ok, true);
+  } finally {
+    srv.closeAllConnections();
+    srv.close();
+  }
+});
+
 test('only plain servers are stopped by port, never forwarders', () => {
   for (const name of ['node', 'python3', 'memos', 'ruby']) assert.equal(stoppable(name), true, name);
   for (const name of ['ssh', 'com.docker.backend', 'docker-proxy', 'vpnkit', 'limactl', 'OrbStack Helper', 'kubectl', '']) assert.equal(stoppable(name), false, name);
