@@ -23,7 +23,7 @@ cd docket
 npm start
 ```
 
-Open http://localhost:4600, create your account, then press **Add service** and pick a running server or enter an address. Details: [docs/setup.md](docs/setup.md).
+Open http://127.0.0.1:4600, create your account, then press **Add service** and pick a running server or enter an address. Details: [docs/setup.md](docs/setup.md).
 
 ## Security
 
