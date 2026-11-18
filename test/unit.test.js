@@ -4,9 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { parseNetstat, parseLsof, parseTasklist, titleOf, iconOf, blocksFraming, probe } from '../server/ports.js';
+import { parseNetstat, parseLsof } from '../server/ports.js';
+import { titleOf, iconOf, blocksFraming, probe } from '../server/page.js';
 import { validateService, portOf } from '../server/store.js';
-import { simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
+import { parseTasklist, simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
 import { serviceEnv, Runner, stoppable, isCompose } from '../server/runner.js';
 import { spawn } from 'node:child_process';
 

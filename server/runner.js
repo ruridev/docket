@@ -4,8 +4,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
-import { listListening, processNames } from './ports.js';
-import { processTable, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
+import { listListening } from './ports.js';
+import { processTable, processNames, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
 import { portOf } from './store.js';
 import { ROOT } from './paths.js';
 

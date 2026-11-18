@@ -6,7 +6,8 @@ import { execFileSync } from 'node:child_process';
 import { DATA_DIR, LOG_DIR, WEB_DIR, portFromArgs } from './paths.js';
 import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
-import { probe, titleOf, iconOf, blocksFraming, scanHttp, listListening } from './ports.js';
+import { probe, titleOf, iconOf, blocksFraming } from './page.js';
+import { scanHttp, listListening } from './ports.js';
 import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js';
 import { createAuth } from './auth.js';
 
