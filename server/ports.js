@@ -4,6 +4,9 @@ import { probe, titleOf } from './page.js';
 
 const IS_WIN = process.platform === 'win32';
 
+/** Listening addresses that a client on this PC reaches (all interfaces or loopback). */
+export const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
+
 /** Parses `netstat -ano` output into listening sockets. A listening TCP row has a foreign address of *:0. */
 export function parseNetstat(text) {
   const out = [];
@@ -65,7 +68,7 @@ export async function scanHttp({ exclude = [] } = {}) {
   const byPort = new Map();
   for (const r of rows) {
     if (exclude.includes(r.port) || byPort.has(r.port)) continue;
-    if (!/^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/.test(r.host)) continue; // only reachable from localhost
+    if (!LOCAL_HOST.test(r.host)) continue;
     byPort.set(r.port, r);
   }
   const list = [...byPort.values()].sort((a, b) => a.port - b.port);

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
-import { listListening } from './ports.js';
+import { listListening, LOCAL_HOST } from './ports.js';
 import { processTable, processNames, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
 import { portOf } from './store.js';
 import { ROOT } from './paths.js';
@@ -224,7 +224,6 @@ export class Runner {
   }
 }
 
-const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
 const LOOPBACK_URL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ''; } };
 const FORWARDERS = /^(ssh|sshd|.*docker.*|vpnkit.*|.*lima.*|.*orbstack.*|colima|kubectl|qemu.*|podman.*|wslrelay)$/i;
