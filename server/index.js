@@ -120,6 +120,7 @@ async function api(req, res, url) {
 
   if (parts[0] === 'services' && parts.length === 1) {
     if (m === 'GET') {
+      runner.forgetEnded();
       const list = await Promise.all(store.list().map(serviceStatus));
       return send(res, 200, { services: list });
     }

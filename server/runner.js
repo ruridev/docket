@@ -28,12 +28,13 @@ export class Runner {
     const r = this.store.getRun(id);
     if (!r) return null;
     const alive = isAlive(r.pid);
-    if (!alive && r.phase !== 'failed') {
-      // Ended while nobody was watching (e.g. the portal was restarted): forget it.
-      this.store.setRun(id, null);
-      return null;
-    }
+    if (!alive && r.phase !== 'failed') return null;
     return { pid: r.pid, phase: r.phase, startedAt: r.startedAt, movedTo: r.movedTo || null, exitCode: r.exitCode ?? null, alive };
+  }
+
+  /** Forgets runs that ended while nobody was watching (e.g. the portal was restarted). A failed start stays until the UI dismisses it. */
+  forgetEnded() {
+    for (const [id, r] of Object.entries(this.store.runs)) if (r.phase !== 'failed' && !isAlive(r.pid)) this.store.setRun(id, null);
   }
 
   logFile(id) { return path.join(this.logDir, `${id}.log`); }

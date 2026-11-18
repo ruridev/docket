@@ -202,3 +202,20 @@ test('stopping a service started elsewhere never touches a local process for a r
     assert.deepEqual(await runner.stopOutside('x'), { error: 'not_stoppable' }, url);
   }
 });
+
+test('info only reads; forgetEnded drops ended runs but keeps a failed start', () => {
+  const runs = {
+    gone: { pid: 2 ** 22 + 12345, phase: 'running' },
+    failed: { pid: 2 ** 22 + 12346, phase: 'failed', exitCode: 1 },
+    live: { pid: process.pid, phase: 'running' },
+  };
+  let writes = 0;
+  const store = { runs, getRun: (id) => runs[id] || null, setRun(id, r) { writes += 1; if (r) runs[id] = r; else delete runs[id]; } };
+  const runner = new Runner(store, os.tmpdir());
+  assert.equal(runner.info('gone'), null);
+  assert.equal(runner.info('failed').phase, 'failed');
+  assert.equal(runner.info('live').alive, true);
+  assert.equal(writes, 0);
+  runner.forgetEnded();
+  assert.deepEqual(Object.keys(runs).sort(), ['failed', 'live']);
+});
