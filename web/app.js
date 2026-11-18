@@ -181,6 +181,23 @@ window.addEventListener('resize', placeFab);
 // ---------- home ----------
 const editIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
 
+// A service card on the home page (with address and edit button) or in the list dialog.
+function cardHtml(s, onHome) {
+  const st = statusOf(s);
+  const stop = canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : '';
+  return `<article class="card${!onHome && view === s.id ? ' cur' : ''}">
+    <div class="card-head">${iconHtml(s)}
+      <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3>${onHome ? `<span class="addr mono">${esc(s.url)}</span>` : ''}</div>
+      <span class="pill ${st.cls}">${esc(st.label)}</span></div>
+    <p>${esc(s.desc || tr('noDesc'))}</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
+      ${startBtn(s, '', tr('run'))}
+      <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
+      ${onHome ? `<span class="grow"></span>${stop}<button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}" title="${esc(tr('edit'))}">${editIcon}</button>` : stop && `<span class="grow"></span>${stop}`}
+    </div></article>`;
+}
+
 function renderHome() {
   const up = services.filter(isLive).length;
   if (!services.length) {
@@ -192,22 +209,7 @@ function renderHome() {
   }
   $('#home').innerHTML = `<div class="home-inner">
     <div class="home-title"><h1>${esc(tr('homeTitle'))}</h1><span class="muted">${esc(tr('summary', { n: services.length, up }))}</span></div>
-    <div class="grid">${services.map((s) => {
-      const st = statusOf(s);
-      return `<article class="card">
-        <div class="card-head">${iconHtml(s)}
-          <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3><span class="addr mono">${esc(s.url)}</span></div>
-          <span class="pill ${st.cls}">${esc(st.label)}</span></div>
-        <p>${esc(s.desc || tr('noDesc'))}</p>
-        <div class="actions">
-          <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-          ${startBtn(s, '', tr('run'))}
-          <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
-          <span class="grow"></span>
-          ${canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
-          <button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}" title="${esc(tr('edit'))}">${editIcon}</button>
-        </div></article>`;
-    }).join('')}</div></div>`;
+    <div class="grid">${services.map((s) => cardHtml(s, true)).join('')}</div></div>`;
 }
 
 // ---------- service view ----------
@@ -245,7 +247,7 @@ function renderView() {
 
   const r = run(s);
   $('#banner').innerHTML = r?.movedTo ? `<div class="banner"><span style="color:var(--warn)">⚠</span>
-    <span>${esc(tr('movedText', { want: portOf(s.url), got: r.movedTo }))}</span>
+    <span>${esc(tr('movedText', { want: s.port, got: r.movedTo }))}</span>
     <button class="btn btn-primary" type="button" data-act="useMoved">${esc(tr('useActual', { got: r.movedTo }))}</button>
     <button class="btn" type="button" data-act="keepMoved">${esc(tr('keep'))}</button></div>` : '';
 
@@ -262,7 +264,7 @@ function renderView() {
     box = `<h2>${esc(s.name)}</h2><p>${esc(tr('frameBlocked', { name: s.name }))}</p>
       <a class="btn btn-primary" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('openNewTab'))}</a>`;
   } else if (isStarting(s)) {
-    box = `<h2>${esc(tr('startingTitle', { name: s.name }))}</h2><p>${esc(tr('startingText', { port: portOf(s.url) }))}</p>
+    box = `<h2>${esc(tr('startingTitle', { name: s.name }))}</h2><p>${esc(tr('startingText', { port: s.port }))}</p>
       <pre class="log">${esc(logs.get(s.id) || `> ${s.cmd}`)}</pre>
       <div class="actions" style="justify-content:center"><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button></div>`;
   } else {
@@ -300,20 +302,7 @@ function renderList() {
   const prev = $('#modal .list-body');
   const scroll = prev ? prev.scrollTop : 0;
   const tab = (key, label, n) => `<button class="ftab${f === key ? ' on' : ''}" type="button" data-filter="${key}">${esc(label)} ${n}</button>`;
-  const body = listed.map((s) => {
-    const st = statusOf(s);
-    return `<article class="card${view === s.id ? ' cur' : ''}">
-      <div class="card-head">${iconHtml(s)}
-        <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3></div>
-        <span class="pill ${st.cls}">${esc(st.label)}</span></div>
-      <p>${esc(s.desc || tr('noDesc'))}</p>
-      <div class="actions">
-        <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-        ${startBtn(s, '', tr('run'))}
-        <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
-        ${canStop(s) ? `<span class="grow"></span><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
-      </div></article>`;
-  }).join('');
+  const body = listed.map((s) => cardHtml(s, false)).join('');
   $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg list-dlg" role="dialog" aria-modal="true" aria-label="${esc(tr('listTitle'))}">
     <div class="dlg-head"><h2>${esc(tr('listTitle'))}</h2>
       ${tab('all', tr('all'), services.length)}${tab('up', tr('up'), up)}${tab('down', tr('down'), services.length - up)}
@@ -371,7 +360,7 @@ function updateDup() {
   const note = $('#dupNote');
   if (!note) return;
   const port = portOf(field('url').value.trim());
-  const dups = port && /^https?:\/\//i.test(field('url').value.trim()) ? services.filter((s) => s.id !== modal.id && portOf(s.url) === port) : [];
+  const dups = port && /^https?:\/\//i.test(field('url').value.trim()) ? services.filter((s) => s.id !== modal.id && s.port === port) : [];
   note.hidden = !dups.length;
   note.textContent = dups.length ? `⚠ ${tr('dupPort', { name: dups.map((s) => s.name).join(', '), port })}` : '';
 }
