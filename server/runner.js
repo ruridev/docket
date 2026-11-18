@@ -4,8 +4,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
-import { listListening, processNames } from './ports.js';
-import { processTable, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
+import { listListening, LOCAL_HOST } from './ports.js';
+import { processTable, processNames, descendants, isAlive, startTimeOf, stillOurs } from './procs.js';
 import { portOf } from './store.js';
 import { ROOT } from './paths.js';
 
@@ -28,12 +28,13 @@ export class Runner {
     const r = this.store.getRun(id);
     if (!r) return null;
     const alive = isAlive(r.pid);
-    if (!alive && r.phase !== 'failed') {
-      // Ended while nobody was watching (e.g. the portal was restarted): forget it.
-      this.store.setRun(id, null);
-      return null;
-    }
+    if (!alive && r.phase !== 'failed') return null;
     return { pid: r.pid, phase: r.phase, startedAt: r.startedAt, movedTo: r.movedTo || null, exitCode: r.exitCode ?? null, alive };
+  }
+
+  /** Forgets runs that ended while nobody was watching (e.g. the portal was restarted). A failed start stays until the UI dismisses it. */
+  forgetEnded() {
+    for (const [id, r] of Object.entries(this.store.runs)) if (r.phase !== 'failed' && !isAlive(r.pid)) this.store.setRun(id, null);
   }
 
   logFile(id) { return path.join(this.logDir, `${id}.log`); }
@@ -224,7 +225,6 @@ export class Runner {
   }
 }
 
-const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
 const LOOPBACK_URL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 const hostOf = (url) => { try { return new URL(url).hostname; } catch { return ''; } };
 const FORWARDERS = /^(ssh|sshd|.*docker.*|vpnkit.*|.*lima.*|.*orbstack.*|colima|kubectl|qemu.*|podman.*|wslrelay)$/i;

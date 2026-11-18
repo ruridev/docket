@@ -32,6 +32,8 @@ button:disabled { cursor: default; opacity: .6; }
 .hdr-counts { display: flex; align-items: center; gap: 6px; flex: none; margin-left: 4px; }
 .hdr-mid { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .hdr-tools { display: flex; align-items: center; gap: 2px; }
+.cur-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cur-url { white-space: nowrap; }
 /* While a service is open the header hides behind a floating button (like Nuxt DevTools). */
 body.in-view .hdr { position: fixed; top: 0; left: 0; right: 0; z-index: 9; box-shadow: 0 4px 16px rgba(0, 0, 0, .25); }
 body.in-view:not(.hdr-open) .hdr { display: none; }
@@ -81,10 +83,12 @@ body.in-view .site-foot { display: none; }
 .card .addr { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .card p { margin: 0; color: var(--muted); font-size: 13px; min-height: 40px; overflow-wrap: anywhere; }
 .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.actions.center { justify-content: center; }
 .grow { flex: 1 1 auto; }
 .svc-icon { width: 36px; height: 36px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #fff; overflow: hidden; }
 .svc-icon img { width: 100%; height: 100%; object-fit: contain; }
 .empty { padding: 48px 16px; text-align: center; color: var(--muted); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.empty h1 { margin: 0; font-size: 20px; color: var(--text); }
 
 /* service view */
 .view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -96,6 +100,7 @@ body.in-view .site-foot { display: none; }
 .state-box { max-width: 560px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .state-box h2 { margin: 0; font-size: 18px; }
 .state-box p { margin: 0; color: var(--muted); }
+.fail-box { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; }
 .log { width: 100%; max-height: 260px; overflow: auto; text-align: left; background: var(--log); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 12px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 
 /* dialogs */
@@ -105,8 +110,12 @@ body.in-view .site-foot { display: none; }
 .dlg-head h2 { margin: 0 8px 0 0; font-size: 17px; }
 .dlg-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
 .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.dlg-foot .btn-danger { margin-right: auto; }
+.edit-dlg { max-width: 540px; }
+.conflict-dlg { max-width: 480px; }
 .list-dlg { max-width: 960px; max-height: calc(100vh - 88px); overflow: hidden; }
 .list-body { padding: 16px; overflow-y: auto; background: var(--bg); }
+.no-match { text-align: center; margin: 24px 0; }
 .card.cur { border-color: var(--accent); }
 .ftab { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--muted); font-size: 13px; }
 .ftab.on { background: var(--chip); border-color: var(--border); color: var(--text); }
@@ -114,6 +123,7 @@ body.in-view .site-foot { display: none; }
 .chip { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12px; }
 .chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
 .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.picks { display: flex; flex-direction: column; gap: 6px; }
 .pick { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); text-align: left; }
 .pick:hover { border-color: var(--accent); }
 .pick .port { font-size: 13px; color: var(--accent); min-width: 56px; }
@@ -128,6 +138,10 @@ body.in-view .site-foot { display: none; }
 .note.warn { color: var(--warn); }
 .note.err { color: var(--danger); }
 .ports { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.hint { font-size: 13px; }
+.m0 { margin: 0; }
+.text-warn { color: var(--warn); }
+.text-danger { color: var(--danger); }
 
 /* settings */
 .settings-dlg { max-width: 880px; }

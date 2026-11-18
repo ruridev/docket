@@ -1,7 +1,7 @@
 # Prints JSON about processes: id, parent id, name, command line, and the working folder.
 # The working folder is read from the process's PEB (the same value Process Explorer shows);
 # this works without admin rights for processes of the same user. Usage: procinfo.ps1 -Ids 123,456
-param([string]$Ids = '', [switch]$All)
+param([string]$Ids = '')
 $ErrorActionPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
@@ -49,7 +49,6 @@ $procs = Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, Nam
 $want = @{}
 foreach ($i in ($Ids -split ',')) { if ($i -match '^\d+$') { $want[[int]$i] = $true } }
 $out = foreach ($p in $procs) {
-  if (-not $All -and -not $want.ContainsKey([int]$p.ProcessId)) { continue }
   [pscustomobject]@{
     pid = [int]$p.ProcessId
     ppid = [int]$p.ParentProcessId

@@ -106,7 +106,7 @@ test('signed out, the API answers 401 and the page is the sign-in page', async (
 
 test('the page calls the API with its session; the data folder is private', async () => {
   assert.equal((await call('/api/services')).status, 200);
-  await waitFor(async () => portalOut.includes(`docket portal: ${base.replace('127.0.0.1', 'localhost')}\n`), 5000);
+  await waitFor(async () => portalOut.includes(`docket portal: ${base}\n`), 5000);
   assert.equal(fs.existsSync(path.join(dataDir, 'token')), false);
   if (process.platform !== 'win32') assert.equal(fs.statSync(dataDir).mode & 0o777, 0o700);
 });

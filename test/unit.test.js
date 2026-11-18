@@ -4,9 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { parseNetstat, parseLsof, parseTasklist, titleOf, iconOf, blocksFraming, probe } from '../server/ports.js';
+import { parseNetstat, parseLsof } from '../server/ports.js';
+import { titleOf, iconOf, blocksFraming, probe } from '../server/page.js';
 import { validateService, portOf } from '../server/store.js';
-import { simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
+import { parseTasklist, simplifyCommand, guessLaunch, folderCommands, projectRoot, descendants, safeCommand, startTimeOf, stillOurs } from '../server/procs.js';
 import { serviceEnv, Runner, stoppable, isCompose } from '../server/runner.js';
 import { spawn } from 'node:child_process';
 
@@ -200,4 +201,21 @@ test('stopping a service started elsewhere never touches a local process for a r
     const runner = new Runner({ get: () => ({ id: 'x', url, folder: '', cmd: '' }) }, os.tmpdir());
     assert.deepEqual(await runner.stopOutside('x'), { error: 'not_stoppable' }, url);
   }
+});
+
+test('info only reads; forgetEnded drops ended runs but keeps a failed start', () => {
+  const runs = {
+    gone: { pid: 2 ** 22 + 12345, phase: 'running' },
+    failed: { pid: 2 ** 22 + 12346, phase: 'failed', exitCode: 1 },
+    live: { pid: process.pid, phase: 'running' },
+  };
+  let writes = 0;
+  const store = { runs, getRun: (id) => runs[id] || null, setRun(id, r) { writes += 1; if (r) runs[id] = r; else delete runs[id]; } };
+  const runner = new Runner(store, os.tmpdir());
+  assert.equal(runner.info('gone'), null);
+  assert.equal(runner.info('failed').phase, 'failed');
+  assert.equal(runner.info('live').alive, true);
+  assert.equal(writes, 0);
+  runner.forgetEnded();
+  assert.deepEqual(Object.keys(runs).sort(), ['failed', 'live']);
 });

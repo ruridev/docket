@@ -6,7 +6,8 @@ import { execFileSync } from 'node:child_process';
 import { DATA_DIR, LOG_DIR, WEB_DIR, portFromArgs } from './paths.js';
 import { Store, validateService, portOf } from './store.js';
 import { Runner } from './runner.js';
-import { probe, titleOf, iconOf, blocksFraming, scanHttp, listListening } from './ports.js';
+import { probe, iconOf, blocksFraming } from './page.js';
+import { scanHttp, listListening } from './ports.js';
 import { processTable, guessLaunch, folderCommands, stillOurs } from './procs.js';
 import { createAuth } from './auth.js';
 
@@ -54,7 +55,7 @@ async function serviceStatus(s) {
   if (res.ok && (!page || Date.now() - page.at > PAGE_TTL)) {
     const full = await probe(s.url, { timeout: 2500, wantBody: true });
     if (full.ok && full.status < 400) {
-      page = { at: Date.now(), icon: iconOf(full.body, s.url), title: titleOf(full.body), framable: !blocksFraming(full.headers) };
+      page = { at: Date.now(), icon: iconOf(full.body, s.url), framable: !blocksFraming(full.headers) };
       pageCache.set(s.url, page);
     }
   }
@@ -119,6 +120,7 @@ async function api(req, res, url) {
 
   if (parts[0] === 'services' && parts.length === 1) {
     if (m === 'GET') {
+      runner.forgetEnded();
       const list = await Promise.all(store.list().map(serviceStatus));
       return send(res, 200, { services: list });
     }
@@ -219,7 +221,7 @@ server.on('error', (e) => {
 server.listen(PORT, '127.0.0.1', () => {
   // Make the setup code before announcing the server, so it exists once the address is printed
   const code = !auth.hasAccount() && auth.setupCode();
-  console.log(`docket portal: http://localhost:${PORT}`);
-  if (code) console.log(`Create the account: http://localhost:${PORT}/?setup=${code}`);
+  console.log(`docket portal: http://127.0.0.1:${PORT}`);
+  if (code) console.log(`Create the account: http://127.0.0.1:${PORT}/?setup=${code}`);
 });
 

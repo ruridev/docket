@@ -113,15 +113,14 @@ function renderHeader() {
   document.body.classList.toggle('in-view', !!s);
   if (!s) document.body.classList.remove('hdr-open');
   $('#fab').hidden = !s;
-  $('#fab').setAttribute('aria-label', 'docket');
   $('#fab').setAttribute('aria-expanded', String(document.body.classList.contains('hdr-open')));
   $('#fab').innerHTML = s ? `${$('#brand .logo').outerHTML}<span class="dot ${statusOf(s).cls}"></span>` : '';
   placeFab();
   $('#current').innerHTML = s ? `
     <button class="count" type="button" data-list="all" title="${esc(tr('switchTitle'))}">
       <span class="dot ${statusOf(s).cls}"></span>
-      <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</span>
-      <span class="mono small muted" style="white-space:nowrap">${esc(effectiveUrl(s))}</span>
+      <span class="cur-name">${esc(s.name)}</span>
+      <span class="mono small muted cur-url">${esc(effectiveUrl(s))}</span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>` : '';
   $('#viewTools').innerHTML = s ? `
@@ -181,33 +180,35 @@ window.addEventListener('resize', placeFab);
 // ---------- home ----------
 const editIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
 
+// A service card on the home page (with address and edit button) or in the list dialog.
+function cardHtml(s, onHome) {
+  const st = statusOf(s);
+  const stop = canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : '';
+  return `<article class="card${!onHome && view === s.id ? ' cur' : ''}">
+    <div class="card-head">${iconHtml(s)}
+      <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3>${onHome ? `<span class="addr mono">${esc(s.url)}</span>` : ''}</div>
+      <span class="pill ${st.cls}">${esc(st.label)}</span></div>
+    <p>${esc(s.desc || tr('noDesc'))}</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
+      ${startBtn(s, '', tr('run'))}
+      <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
+      ${onHome ? `<span class="grow"></span>${stop}<button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}" title="${esc(tr('edit'))}">${editIcon}</button>` : stop && `<span class="grow"></span>${stop}`}
+    </div></article>`;
+}
+
 function renderHome() {
   const up = services.filter(isLive).length;
   if (!services.length) {
     $('#home').innerHTML = `<div class="home-inner"><div class="empty">
-      <h1 style="margin:0;font-size:20px;color:var(--text)">${esc(tr('emptyTitle'))}</h1>
+      <h1>${esc(tr('emptyTitle'))}</h1>
       <span>${esc(tr('emptyText'))}</span>
       <button class="btn btn-primary" type="button" data-act="add">+ ${esc(tr('register'))}</button></div></div>`;
     return;
   }
   $('#home').innerHTML = `<div class="home-inner">
     <div class="home-title"><h1>${esc(tr('homeTitle'))}</h1><span class="muted">${esc(tr('summary', { n: services.length, up }))}</span></div>
-    <div class="grid">${services.map((s) => {
-      const st = statusOf(s);
-      return `<article class="card">
-        <div class="card-head">${iconHtml(s)}
-          <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3><span class="addr mono">${esc(s.url)}</span></div>
-          <span class="pill ${st.cls}">${esc(st.label)}</span></div>
-        <p>${esc(s.desc || tr('noDesc'))}</p>
-        <div class="actions">
-          <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-          ${startBtn(s, '', tr('run'))}
-          <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
-          <span class="grow"></span>
-          ${canStop(s) ? `<button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
-          <button class="icon-btn" type="button" data-edit="${s.id}" aria-label="${esc(tr('edit'))}" title="${esc(tr('edit'))}">${editIcon}</button>
-        </div></article>`;
-    }).join('')}</div></div>`;
+    <div class="grid">${services.map((s) => cardHtml(s, true)).join('')}</div></div>`;
 }
 
 // ---------- service view ----------
@@ -244,8 +245,8 @@ function renderView() {
   if (!s) { for (const f of frames.values()) f.el.hidden = true; return; }
 
   const r = run(s);
-  $('#banner').innerHTML = r?.movedTo ? `<div class="banner"><span style="color:var(--warn)">⚠</span>
-    <span>${esc(tr('movedText', { want: portOf(s.url), got: r.movedTo }))}</span>
+  $('#banner').innerHTML = r?.movedTo ? `<div class="banner"><span class="text-warn">⚠</span>
+    <span>${esc(tr('movedText', { want: s.port, got: r.movedTo }))}</span>
     <button class="btn btn-primary" type="button" data-act="useMoved">${esc(tr('useActual', { got: r.movedTo }))}</button>
     <button class="btn" type="button" data-act="keepMoved">${esc(tr('keep'))}</button></div>` : '';
 
@@ -262,18 +263,18 @@ function renderView() {
     box = `<h2>${esc(s.name)}</h2><p>${esc(tr('frameBlocked', { name: s.name }))}</p>
       <a class="btn btn-primary" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('openNewTab'))}</a>`;
   } else if (isStarting(s)) {
-    box = `<h2>${esc(tr('startingTitle', { name: s.name }))}</h2><p>${esc(tr('startingText', { port: portOf(s.url) }))}</p>
+    box = `<h2>${esc(tr('startingTitle', { name: s.name }))}</h2><p>${esc(tr('startingText', { port: s.port }))}</p>
       <pre class="log">${esc(logs.get(s.id) || `> ${s.cmd}`)}</pre>
-      <div class="actions" style="justify-content:center"><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button></div>`;
+      <div class="actions center"><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button></div>`;
   } else {
     const failed = isFailed(s);
     box = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
       <h2>${esc(tr('downTitle', { name: s.name }))}</h2>
       <p>${esc(tr('cannotConnect', { url: s.url }))} ${esc(s.cmd ? tr('downCmd') : tr('downNoCmd'))}</p>
-      ${failed ? `<div style="width:100%;display:flex;flex-direction:column;gap:6px;text-align:left">
-        <span class="small" style="color:var(--danger)">${esc(tr('failedText', { code: r.exitCode ?? '?' }))}</span>
+      ${failed ? `<div class="fail-box">
+        <span class="small text-danger">${esc(tr('failedText', { code: r.exitCode ?? '?' }))}</span>
         <pre class="log">${esc(logs.get(s.id) || '')}</pre></div>` : ''}
-      <div class="actions" style="justify-content:center">
+      <div class="actions center">
         ${startBtn(s, ' btn-primary', tr('startServer'))}
         <button class="btn" type="button" data-act="retry">${esc(tr('retry'))}</button>
         <button class="btn" type="button" data-edit="${s.id}">${esc(tr('changeSettings'))}</button>
@@ -300,27 +301,14 @@ function renderList() {
   const prev = $('#modal .list-body');
   const scroll = prev ? prev.scrollTop : 0;
   const tab = (key, label, n) => `<button class="ftab${f === key ? ' on' : ''}" type="button" data-filter="${key}">${esc(label)} ${n}</button>`;
-  const body = listed.map((s) => {
-    const st = statusOf(s);
-    return `<article class="card${view === s.id ? ' cur' : ''}">
-      <div class="card-head">${iconHtml(s)}
-        <div><h3 title="${esc(s.name)}">${esc(s.name)}</h3></div>
-        <span class="pill ${st.cls}">${esc(st.label)}</span></div>
-      <p>${esc(s.desc || tr('noDesc'))}</p>
-      <div class="actions">
-        <button class="btn btn-primary" type="button" data-open="${s.id}">${esc(tr('open'))}</button>
-        ${startBtn(s, '', tr('run'))}
-        <a class="btn" href="${esc(effectiveUrl(s))}" target="_blank" rel="noopener">${esc(tr('newTab'))}</a>
-        ${canStop(s) ? `<span class="grow"></span><button class="btn" type="button" data-stop="${s.id}">${esc(tr('stop'))}</button>` : ''}
-      </div></article>`;
-  }).join('');
+  const body = listed.map((s) => cardHtml(s, false)).join('');
   $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg list-dlg" role="dialog" aria-modal="true" aria-label="${esc(tr('listTitle'))}">
     <div class="dlg-head"><h2>${esc(tr('listTitle'))}</h2>
       ${tab('all', tr('all'), services.length)}${tab('up', tr('up'), up)}${tab('down', tr('down'), services.length - up)}
       <span class="grow"></span>
       <button class="btn btn-primary" type="button" data-act="add">+ ${esc(tr('register'))}</button>
       <button class="icon-btn" type="button" data-act="close" aria-label="${esc(tr('close'))}">${closeIcon}</button></div>
-    <div class="list-body">${body ? `<div class="grid">${body}</div>` :`<p class="muted" style="text-align:center;margin:24px 0">${esc(tr('noMatch'))}</p>`}</div>
+    <div class="list-body">${body ? `<div class="grid">${body}</div>` :`<p class="muted no-match">${esc(tr('noMatch'))}</p>`}</div>
   </section></div>`;
   $('#modal .list-body').scrollTop = scroll;
 }
@@ -335,7 +323,7 @@ function openEdit(id) {
   const s = id ? svc(id) : null;
   modal = { type: 'edit', id: s ? s.id : null, auto: false, scan: null, guessSeq: 0, cmdSeq: 0 };
   const v = s || { name: '', url: '', folder: '', cmd: '', desc: '' };
-  $('#modal').innerHTML = `<div class="overlay" data-overlay><form class="dlg" id="editForm" style="max-width:540px" novalidate>
+  $('#modal').innerHTML = `<div class="overlay" data-overlay><form class="dlg edit-dlg" id="editForm" novalidate>
     <div class="dlg-head"><h2>${esc(tr(s ? 'editTitle' : 'newTitle'))}</h2><span class="grow"></span>
       <button class="icon-btn" type="button" data-act="close" aria-label="${esc(tr('close'))}">${closeIcon}</button></div>
     <div class="dlg-body">
@@ -350,10 +338,10 @@ function openEdit(id) {
         <span class="small">${esc(tr('cmdHint'))}</span>
       </div>
       <label class="field">${esc(tr('fDesc'))}<textarea name="desc">${esc(v.desc)}</textarea></label>
-      ${s ? '' : `<section class="ports"><span class="small muted" style="font-size:13px">${esc(tr('openPorts'))}</span><div id="scanBox"><p class="small muted" style="margin:0">${esc(tr('scanning'))}</p></div></section>`}
-      <p class="note err" id="formErr" hidden style="margin:0"></p>
+      ${s ? '' : `<section class="ports"><span class="muted hint">${esc(tr('openPorts'))}</span><div id="scanBox"><p class="small muted m0">${esc(tr('scanning'))}</p></div></section>`}
+      <p class="note err m0" id="formErr" hidden></p>
       <div class="dlg-foot">
-        ${s ? `<button class="btn btn-danger" type="button" data-act="delete" style="margin-right:auto">${esc(tr('delete'))}</button>` : ''}
+        ${s ? `<button class="btn btn-danger" type="button" data-act="delete">${esc(tr('delete'))}</button>` : ''}
         <button class="btn" type="button" data-act="close">${esc(tr('cancel'))}</button>
         <button class="btn btn-primary" type="submit">${esc(tr(s ? 'save' : 'add'))}</button>
       </div>
@@ -371,7 +359,7 @@ function updateDup() {
   const note = $('#dupNote');
   if (!note) return;
   const port = portOf(field('url').value.trim());
-  const dups = port && /^https?:\/\//i.test(field('url').value.trim()) ? services.filter((s) => s.id !== modal.id && portOf(s.url) === port) : [];
+  const dups = port && /^https?:\/\//i.test(field('url').value.trim()) ? services.filter((s) => s.id !== modal.id && s.port === port) : [];
   note.hidden = !dups.length;
   note.textContent = dups.length ? `⚠ ${tr('dupPort', { name: dups.map((s) => s.name).join(', '), port })}` : '';
 }
@@ -386,7 +374,7 @@ async function updateCmdBox() {
   if (!modal || modal.type !== 'edit' || seq !== modal.cmdSeq) return;
   const cmds = data.commands || [];
   if (!data.exists) {
-    chips.innerHTML = `<span class="small" style="color:var(--warn)">${esc(tr('errNoFolder', { folder }))}</span>`;
+    chips.innerHTML = `<span class="small text-warn">${esc(tr('errNoFolder', { folder }))}</span>`;
     return;
   }
   const cur = field('cmd').value.trim();
@@ -422,13 +410,13 @@ async function runScan() {
   modal.scan = data.servers || [];
   const box = $('#scanBox');
   if (!box) return;
-  box.innerHTML = modal.scan.length ? `<div style="display:flex;flex-direction:column;gap:6px">${modal.scan.map((d, i) => `
+  box.innerHTML = modal.scan.length ? `<div class="picks">${modal.scan.map((d, i) => `
     <button type="button" class="pick" data-pick="${i}">
       <span class="port mono">:${d.port}</span>
       <span class="ttl">${esc(d.title || tr('untitled'))}</span>
       ${d.registered.length ? `<span class="pill muted">${esc(tr('regTag', { name: d.registered.join(', ') }))}</span>` : ''}
       <span class="small muted">${esc(d.proc)}</span>
-    </button>`).join('')}</div>` : `<p class="small muted" style="margin:0">${esc(tr('noPorts'))}</p>`;
+    </button>`).join('')}</div>` : `<p class="small muted m0">${esc(tr('noPorts'))}</p>`;
 }
 
 async function saveEdit(e) {
@@ -473,7 +461,7 @@ function renderSettings() {
         <span class="prev-bar" style="background:${p.bar};color:${p.barText};font-family:${p.font};box-shadow:inset 0 -1px 0 ${p.border}">${esc(p.sample)}</span>
         <span class="prev-body"><i style="height:18px;background:${p.panel};box-shadow:inset 0 0 0 1px ${p.border}"></i><i style="height:6px;width:70%;background:${p.text}"></i><i style="height:5px;width:50%;background:${p.muted}"></i><i style="margin-top:auto;height:10px;width:44%;background:${p.accent}"></i></span>
       </span>`).join('')}</span>
-      <span style="font-size:13px">${esc(tr(label))}</span></button>`).join('');
+      <span class="hint">${esc(tr(label))}</span></button>`).join('');
   const langs = Object.entries(LANGS).map(([id, label]) => `<button type="button" class="radio${lang === id ? ' on' : ''}" role="radio" aria-checked="${lang === id}" data-lang-pick="${id}"><span class="ring"></span>${esc(label)}</button>`).join('');
   $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg settings-dlg" role="dialog" aria-modal="true" aria-label="${esc(tr('settings'))}">
     <div class="dlg-head"><h2>${esc(tr('settings'))}</h2><span class="grow"></span>
@@ -506,12 +494,12 @@ function openConflict(id, c) {
   const s = svc(id);
   modal = { type: 'conflict', id, c };
   const who = c.kind === 'service' ? tr('whoService', { name: c.name, pid: c.pid }) : tr('whoProc', { proc: c.proc || '?', pid: c.pid });
-  $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg" role="alertdialog" aria-modal="true" style="max-width:480px" aria-label="${esc(tr('conflictTitle', { port: c.port }))}">
+  $('#modal').innerHTML = `<div class="overlay" data-overlay><section class="dlg conflict-dlg" role="alertdialog" aria-modal="true" aria-label="${esc(tr('conflictTitle', { port: c.port }))}">
     <div class="dlg-head"><h2>${esc(tr('conflictTitle', { port: c.port }))}</h2></div>
     <div class="dlg-body">
-      <p style="margin:0">${esc(tr('conflictText', { name: s ? s.name : '' }))}</p>
+      <p class="m0">${esc(tr('conflictText', { name: s ? s.name : '' }))}</p>
       <pre class="log">${esc(who)}</pre>
-      ${c.kind === 'service' ? '' : `<p class="small muted" style="margin:0;font-size:13px">${esc(tr('conflictUnknownHint'))}</p>`}
+      ${c.kind === 'service' ? '' : `<p class="muted hint m0">${esc(tr('conflictUnknownHint'))}</p>`}
       <div class="dlg-foot">
         <button class="btn" type="button" data-act="close">${esc(tr('cancel'))}</button>
         ${c.kind === 'service' ? `<button class="btn btn-primary" type="button" data-act="stopAndRun">${esc(tr('stopAndRun', { name: c.name }))}</button>` : ''}

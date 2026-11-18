@@ -19,7 +19,7 @@ How to install and run docket. For an overview, see the [README](../README.md).
 
    There are no dependencies, so there is no `npm install`.
 
-2. Open http://localhost:4600 and create your account (see [Signing in](usage.md#signing-in)).
+2. Open http://127.0.0.1:4600 and create your account (see [Signing in](usage.md#signing-in)).
 3. Press **Add service**. docket lists the web servers it finds on your PC; pick one, or enter a name and an address.
 4. To start and stop the tool from docket, also give it a folder and a start command. docket suggests commands from `package.json` scripts or a Python entry file.
 

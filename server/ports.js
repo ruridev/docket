@@ -1,25 +1,11 @@
-// Which TCP ports are listening on this PC (read from the OS table, no port scanning),
-// and small HTTP checks against them.
-import { execFile } from 'node:child_process';
-import http from 'node:http';
-import https from 'node:https';
+// Which TCP ports are listening on this PC (read from the OS table, no port scanning).
+import { run, processNames } from './procs.js';
+import { probe, titleOf } from './page.js';
 
 const IS_WIN = process.platform === 'win32';
 
-const missing = new Set();
-
-function run(cmd, args, opts = {}) {
-  return new Promise((resolve) => {
-    execFile(cmd, args, { windowsHide: true, maxBuffer: 16 * 1024 * 1024, timeout: 15000, ...opts }, (err, stdout) => {
-      // Without lsof (not installed by default on some Linux distributions) docket finds no servers: say so once
-      if (err?.code === 'ENOENT' && !missing.has(cmd)) {
-        missing.add(cmd);
-        console.warn(`docket: \`${cmd}\` was not found, so running servers can't be found. Install it and restart docket.`);
-      }
-      resolve(err && !stdout ? '' : String(stdout));
-    });
-  });
-}
+/** Listening addresses that a client on this PC reaches (all interfaces or loopback). */
+export const LOCAL_HOST = /^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/;
 
 /** Parses `netstat -ano` output into listening sockets. A listening TCP row has a foreign address of *:0. */
 export function parseNetstat(text) {
@@ -66,91 +52,6 @@ export async function listListening() {
   });
 }
 
-/** Parses `tasklist /FO CSV /NH` into pid -> image name. */
-export function parseTasklist(text) {
-  const map = new Map();
-  for (const line of text.split(/\r?\n/)) {
-    const m = /^"([^"]*)","(\d+)"/.exec(line);
-    if (m) map.set(Number(m[2]), m[1]);
-  }
-  return map;
-}
-
-export async function processNames() {
-  if (IS_WIN) return parseTasklist(await run('tasklist', ['/FO', 'CSV', '/NH']));
-  const map = new Map();
-  for (const line of (await run('ps', ['-axo', 'pid=,comm='])).split('\n')) {
-    const m = /^\s*(\d+)\s+(.*)$/.exec(line);
-    if (m) map.set(Number(m[1]), m[2].split('/').pop());
-  }
-  return map;
-}
-
-/** Answers whether an HTTP server answers at url. Any response (even 404) counts. */
-export function probe(url, { timeout = 1500, wantBody = false } = {}) {
-  return new Promise((done) => {
-    let u;
-    try { u = new URL(url); } catch { return done({ ok: false }); }
-    let deadline;
-    const resolve = (v) => { clearTimeout(deadline); done(v); };
-    const lib = u.protocol === 'https:' ? https : http;
-    const req = lib.get(u, { timeout, rejectUnauthorized: false, headers: { accept: 'text/html,*/*' } }, (res) => {
-      const headers = res.headers;
-      if (!wantBody) { res.destroy(); return resolve({ ok: true, status: res.statusCode, headers }); }
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (c) => { body += c; if (body.length > 65536) res.destroy(); });
-      const done = () => resolve({ ok: true, status: res.statusCode, headers, body });
-      res.on('end', done);
-      res.on('close', done);
-    });
-    // The socket timeout only catches silence; a server that sends a byte now and then needs a deadline.
-    deadline = setTimeout(() => { req.destroy(); resolve({ ok: false }); }, timeout);
-    req.on('timeout', () => req.destroy());
-    req.on('error', () => resolve({ ok: false }));
-  });
-}
-
-export function titleOf(html) {
-  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || '');
-  return m ? decodeEntities(m[1]).replace(/\s+/g, ' ').trim().slice(0, 120) : '';
-}
-
-function decodeEntities(s) {
-  return s.replace(/&(amp|lt|gt|quot|#39|#x27);/g, (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'" })[e]);
-}
-
-/**
- * Finds the page's icon: a <link rel="icon"> (data: URLs are kept as they are) or /favicon.ico.
- * Only the page's own origin: an icon on another host would tell that host each time the portal is opened.
- */
-export function iconOf(html, pageUrl) {
-  for (const m of (html || '').matchAll(/<link\b[^>]*>/gi)) {
-    const tag = m[0];
-    if (!/\brel\s*=\s*["']?[^"'>]*\bicon\b/i.test(tag)) continue;
-    const href = /\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
-    const v = href && (href[2] ?? href[3] ?? href[4]);
-    if (!v) continue;
-    if (/^data:image\//i.test(v)) return v;
-    try {
-      const u = new URL(v, pageUrl + '/');
-      if (u.origin === new URL(pageUrl).origin) return u.href;
-    } catch { /* next */ }
-  }
-  try { return new URL('/favicon.ico', pageUrl).href; } catch { return ''; }
-}
-
-/** True when the page forbids being shown inside another page (iframe). */
-export function blocksFraming(headers = {}) {
-  const xfo = String(headers['x-frame-options'] || '').toLowerCase();
-  if (xfo === 'deny' || xfo === 'sameorigin') return true;
-  const csp = String(headers['content-security-policy'] || '');
-  const fa = /frame-ancestors([^;]*)/i.exec(csp);
-  if (!fa) return false;
-  const v = fa[1].trim();
-  return v === "'none'" || v === "'self'" || v === '';
-}
-
 /** Runs fn over items with at most n at a time. */
 export async function pool(items, n, fn) {
   const out = new Array(items.length);
@@ -167,7 +68,7 @@ export async function scanHttp({ exclude = [] } = {}) {
   const byPort = new Map();
   for (const r of rows) {
     if (exclude.includes(r.port) || byPort.has(r.port)) continue;
-    if (!/^(0\.0\.0\.0|127\.0\.0\.1|::|::1|localhost)$/.test(r.host)) continue; // only reachable from localhost
+    if (!LOCAL_HOST.test(r.host)) continue;
     byPort.set(r.port, r);
   }
   const list = [...byPort.values()].sort((a, b) => a.port - b.port);
@@ -179,5 +80,3 @@ export async function scanHttp({ exclude = [] } = {}) {
   });
   return found.filter(Boolean);
 }
-
-export { run };

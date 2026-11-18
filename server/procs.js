@@ -1,16 +1,51 @@
 // Facts about running processes: parent/child tree, command line, working folder.
 import fs from 'node:fs';
 import path from 'node:path';
-import { run } from './ports.js';
+import { execFile } from 'node:child_process';
 import { ROOT } from './paths.js';
 
 const IS_WIN = process.platform === 'win32';
 const PS1 = path.join(ROOT, 'server', 'procinfo.ps1');
 
+const missing = new Set();
+
+export function run(cmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { windowsHide: true, maxBuffer: 16 * 1024 * 1024, timeout: 15000, ...opts }, (err, stdout) => {
+      // Without lsof (not installed by default on some Linux distributions) docket finds no servers: say so once
+      if (err?.code === 'ENOENT' && !missing.has(cmd)) {
+        missing.add(cmd);
+        console.warn(`docket: \`${cmd}\` was not found, so running servers can't be found. Install it and restart docket.`);
+      }
+      resolve(err && !stdout ? '' : String(stdout));
+    });
+  });
+}
+
+/** Parses `tasklist /FO CSV /NH` into pid -> image name. */
+export function parseTasklist(text) {
+  const map = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^"([^"]*)","(\d+)"/.exec(line);
+    if (m) map.set(Number(m[2]), m[1]);
+  }
+  return map;
+}
+
+export async function processNames() {
+  if (IS_WIN) return parseTasklist(await run('tasklist', ['/FO', 'CSV', '/NH']));
+  const map = new Map();
+  for (const line of (await run('ps', ['-axo', 'pid=,comm='])).split('\n')) {
+    const m = /^\s*(\d+)\s+(.*)$/.exec(line);
+    if (m) map.set(Number(m[1]), m[2].split('/').pop());
+  }
+  return map;
+}
+
 /** All processes as [{ pid, ppid, name, cmd, cwd }]; cwd is filled only for the pids in withCwd. */
 export async function processTable(withCwd = []) {
   if (IS_WIN) {
-    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-All', '-Ids', withCwd.join(',') || '0']);
+    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PS1, '-Ids', withCwd.join(',') || '0']);
     try { return JSON.parse(out.trim() || '[]'); } catch { return []; }
   }
   const rows = [];
